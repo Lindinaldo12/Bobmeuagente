@@ -1,0 +1,31 @@
+{
+  "name": "bobai",
+  "version": "2.0.0",
+  "description": "Bob AI - Assistente Inteligente para Telegram",
+  "main": "bot.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "node bot.js"
+  },
+  "keywords": [
+    "telegram",
+    "grammy",
+    "ai",
+    "gemini",
+    "ollama",
+    "bob"
+  ],
+  "author": "José Lindinaldo do Nascimento Luiz",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@google/genai": "^1.17.0",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "grammy": "^1.38.3",
+    "ollama": "^0.5.17"
+  }
+}
