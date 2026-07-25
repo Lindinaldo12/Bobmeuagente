@@ -1,8 +1,22 @@
 require("dotenv").config();
 
+const express = require("express");
+
 const { inicializar } = require("./core/inicializar");
 const { criarBot } = require("./connect/telegram/telegram");
 const ia = require("./ia/gerenciador");
+
+const app = express();
+
+const PORT = process.env.PORT || 3000;
+
+app.get("/", (req, res) => {
+    res.send("Bob Agente v2.0.0 ONLINE");
+});
+
+app.listen(PORT, () => {
+    console.log(`🌐 Servidor Web iniciado na porta ${PORT}`);
+});
 
 (async () => {
     try {
