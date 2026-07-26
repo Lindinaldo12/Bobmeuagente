@@ -23,15 +23,8 @@ function criarBot() {
         );
 
         await ctx.reply(
-`🤖 Olá, ${usuario.nome}!
-
-Bem-vindo ao ${config.app.nome} AI v${config.app.versao}.
-
-🧠 IA ativa: ${ia.obterIAAtual()}
-
-Seu cadastro foi carregado com sucesso.
-
-Envie qualquer pergunta para começar.`
+            `🤖 Olá, **${usuario.nome}**!\n\nBem-vindo ao ${config.app.nome} AI v${config.app.versao}.\n\n🧠 IA ativa: ${ia.obterIAAtual()}\n\nSeu cadastro foi carregado com sucesso.\n\nEnvie qualquer pergunta para começar.`,
+            { parse_mode: "Markdown" }
         );
 
     });
@@ -45,13 +38,13 @@ Envie qualquer pergunta para começar.`
                 ctx.from.first_name
             );
 
-            // Bloqueado
+            // 1. Verificação de Bloqueio
             if (auth.isBlocked(usuario)) {
                 await ctx.reply("🚫 Seu acesso ao Bob AI foi bloqueado.");
                 return;
             }
 
-            // Master Admin sempre autorizado
+            // 2. Master Admin sempre autorizado
             if (auth.isMaster(ctx.from.id)) {
                 usuario.autorizado = true;
                 memoria.salvarUsuario(usuario);
@@ -59,7 +52,7 @@ Envie qualquer pergunta para começar.`
 
             const pergunta = ctx.message.text;
 
-            // Se o sistema estiver aguardando a senha do usuário
+            // 3. Verificação de Senha (se o sistema estiver aguardando)
             if (authSession.aguardandoSenha(ctx.from.id)) {
 
                 if (auth.checkPassword(pergunta)) {
@@ -68,7 +61,7 @@ Envie qualquer pergunta para começar.`
                     authSession.finalizar(ctx.from.id);
 
                     await ctx.reply(
-                        "✅ Senha correta!\n\nAcesso liberado. Bem-vindo ao Bob AI."
+                        "✅ Senha correta!\n\nAcesso liberado."
                     );
 
                 } else {
@@ -79,24 +72,38 @@ Envie qualquer pergunta para começar.`
 
                 }
 
-                return;
+                return; // Encerra aqui para não tratar a senha como pergunta
             }
 
-            // Usuário ainda não autorizado
+            // 4. Verificação de Autorização Geral
             if (!auth.isAuthorized(usuario)) {
 
                 authSession.iniciar(ctx.from.id);
 
                 await ctx.reply(
-                    "🔐 Acesso protegido.\n\nDigite a senha para continuar."
+                    "🔐 Acesso protegido.\n\nDigite a senha para continuar:"
                 );
 
                 return;
             }
 
+            // 5. Fluxo Normal (IA e Histórico)
             await ctx.reply("🧠 Pensando...");
 
-            const resposta = await ia.perguntar(pergunta);
+            // --- Recarrega os dados do usuário atualizados ---
+            memoria.carregarUsuario(
+                usuario.id,
+                usuario.first_name || usuario.nome || ""
+            );
+
+            // Obtém o histórico de conversas do usuário
+            const historico = memoria.obterHistorico(usuario.id);
+
+            // Envia a pergunta junto com o histórico para a IA
+            const resposta = await ia.perguntar(pergunta, historico);
+
+            console.log("✅ IA respondeu:");
+            console.log(resposta);
 
             memoria.adicionarHistorico(
                 usuario.id,
@@ -104,7 +111,11 @@ Envie qualquer pergunta para começar.`
                 resposta
             );
 
+            console.log("📨 Enviando resposta para o Telegram...");
+
             await ctx.reply(resposta);
+
+            console.log("✅ Resposta enviada ao Telegram.");
 
         } catch (erro) {
 

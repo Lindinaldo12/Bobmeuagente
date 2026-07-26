@@ -1,5 +1,6 @@
 const { GoogleGenAI } = require("@google/genai");
 const config = require("../config/config");
+const memoria = require("../memoria/memoria");
 
 let ai = null;
 
@@ -23,27 +24,67 @@ function conectar() {
     }
 }
 
-async function perguntar(pergunta) {
+async function perguntar(pergunta, historico = []) {
+
+    console.log("🔵 1 - Entrou em perguntar");
+    console.log("🔵 2 - Montando prompt");
+
     try {
         if (!ai) {
             throw new Error("Gemini não inicializado.");
         }
 
-        const resposta = await ai.models.generateContent({
-            model: "gemini-3.6-flash",
+        // --- Definição da Persona e Regras do Bob AI ---
+        const promptSystem = `
+Você é Bob AI.
+
+Regras:
+
+- Responda SEMPRE em português do Brasil.
+- Nunca responda em inglês, exceto se o usuário pedir.
+- Seja claro, objetivo e educado.
+- Use exemplos quando necessário.
+- Nunca invente informações.
+- Se não souber a resposta, diga que não sabe.
+`;
+
+        // Concatena as instruções do sistema, o histórico (se houver) e a nova pergunta
+        let promptFinal = `${promptSystem}\n`;
+
+        if (historico && historico.length > 0) {
+
+            const conversa = historico.map(item =>
+                `Usuário: ${item.pergunta}\nBob: ${item.resposta}`
+            ).join("\n\n");
+
+            promptFinal += `Contexto da conversa (Memória):\n\n${conversa}\n\n`;
+
+        }
+
+        promptFinal += `Pergunta do usuário:\n${pergunta}`;
+
+        // Chamada atualizada com a estrutura solicitada
+        const result = await ai.models.generateContent({
+            model: "models/gemini-3.6-flash",
             contents: [
                 {
                     role: "user",
                     parts: [
                         {
-                            text: pergunta
+                            text: promptFinal
                         }
                     ]
                 }
             ]
         });
 
-        return resposta.text;
+        console.log("🟢 3 - Gemini respondeu");
+
+        const textoResposta = result.text;
+
+        console.log("🟢 4 - Retornando resposta");
+
+        return textoResposta;
 
     } catch (erro) {
         console.log("❌ Erro no Gemini:");
@@ -57,3 +98,4 @@ module.exports = {
     conectar,
     perguntar
 };
+

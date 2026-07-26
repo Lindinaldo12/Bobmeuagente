@@ -1,10 +1,25 @@
 require("dotenv").config();
 
+// Novas dependências para o sistema de log
+const fs = require("fs");
+const path = require("path");
+
 const express = require("express");
 
 const { inicializar } = require("./core/inicializar");
 const { criarBot } = require("./connect/telegram/telegram");
 const ia = require("./ia/gerenciador");
+
+// --- Configuração do Sistema de Log ---
+const LOG_FILE = path.join(__dirname, "bob.log");
+
+// Função para registrar logs em arquivo e no console
+function log(mensagem) {
+    const dataHora = new Date().toISOString();
+    const linha = `[${dataHora}] ${mensagem}\n`;
+    fs.appendFileSync(LOG_FILE, linha);
+    console.log(mensagem);
+}
 
 const app = express();
 
@@ -15,26 +30,25 @@ app.get("/", (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🌐 Servidor Web iniciado na porta ${PORT}`);
+    log(`🌐 Servidor Web iniciado na porta ${PORT}`);
 });
 
 (async () => {
     try {
-
         // Inicializa o Core
         inicializar();
 
         console.log("");
-        console.log("=================================");
-        console.log("🧠 Inicializando Inteligência Artificial...");
-        console.log("=================================");
+        console.log("==========================================");
+        log("🧠 Inicializando Inteligência Artificial...");
+        console.log("==========================================");
 
         await ia.inicializar();
 
         console.log("");
-        console.log("=================================");
-        console.log("🤖 Iniciando Telegram...");
-        console.log("=================================");
+        console.log("==========================================");
+        log("🤖 Iniciando Telegram...");
+        console.log("==========================================");
 
         const bot = criarBot();
 
@@ -48,32 +62,33 @@ app.listen(PORT, () => {
             drop_pending_updates: true,
             onStart: () => {
                 console.log("");
-                console.log("=================================");
-                console.log("✅ Telegram conectado com sucesso.");
-                console.log("🚀 Bob está ONLINE.");
-                console.log("=================================");
+                console.log("==========================================");
+                log("✅ Telegram conectado com sucesso.");
+                log("🚀 Bob está ONLINE.");
+                console.log("==========================================");
             }
         });
 
     } catch (erro) {
-
         console.error("");
-        console.error("=================================");
-        console.error("❌ ERRO AO INICIAR O BOB");
-        console.error("=================================");
+        console.error("==========================================");
+        log(`❌ ERRO AO INICIAR O BOB`);
+        console.error("==========================================");
         console.error(erro);
-
     }
 })();
 
+// Tratamento de rejeições de Promises não capturadas
 process.on("unhandledRejection", (erro) => {
     console.error("");
-    console.error("❌ Unhandled Rejection:");
+    log(`❌ Unhandled Rejection:`);
     console.error(erro);
 });
 
+// Tratamento de exceções não capturadas que quebrariam o processo
 process.on("uncaughtException", (erro) => {
     console.error("");
-    console.error("❌ Uncaught Exception:");
+    log(`❌ Uncaught Exception:`);
     console.error(erro);
 });
+

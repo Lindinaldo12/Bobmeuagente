@@ -4,9 +4,9 @@ const ollama = require("./ollama");
 let iaAtual = "gemini";
 
 async function inicializar() {
-    console.log("==============================");
+    console.log("================================");
     console.log("Inicializando Gerenciador de IA");
-    console.log("==============================");
+    console.log("================================");
 
     const geminiOk = await gemini.conectar();
 
@@ -27,14 +27,15 @@ async function inicializar() {
     console.log("❌ Nenhuma IA disponível.");
 }
 
-async function perguntar(texto) {
-
+// Função perguntar organizada com o parâmetro histórico
+async function perguntar(texto, historico = []) {
+    
     if (iaAtual === "gemini") {
-        return await gemini.perguntar(texto);
+        return await gemini.perguntar(texto, historico);
     }
 
     if (iaAtual === "ollama") {
-        return await ollama.perguntar(texto);
+        return await ollama.perguntar(texto, historico);
     }
 
     return "Nenhuma IA está disponível no momento.";
@@ -49,3 +50,4 @@ module.exports = {
     perguntar,
     obterIAAtual
 };
+

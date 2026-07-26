@@ -23,6 +23,21 @@ function criarUsuario(id, nome = "") {
         criadoEm: new Date().toISOString(),
         ultimaAtividade: new Date().toISOString(),
 
+        perfil: {
+            nome: nome || "",
+            apelido: "",
+            cidade: "",
+            estado: "",
+            pais: "",
+            profissao: "",
+            empresa: "",
+            email: "",
+            telefone: "",
+            idioma: "pt-BR",
+            interesses: [],
+            observacoes: []
+        },
+
         preferencias: {},
 
         historico: []
@@ -45,8 +60,26 @@ function carregarUsuario(id, nome = "") {
         fs.readFileSync(arquivo, "utf8")
     );
 
+    if (!usuario.perfil) {
+        usuario.perfil = {
+            nome: usuario.nome || "",
+            apelido: "",
+            cidade: "",
+            estado: "",
+            pais: "",
+            profissao: "",
+            empresa: "",
+            email: "",
+            telefone: "",
+            idioma: "pt-BR",
+            interesses: [],
+            observacoes: []
+        };
+    }
+
     if (nome && usuario.nome !== nome) {
         usuario.nome = nome;
+        usuario.perfil.nome = nome;
     }
 
     usuario.ultimaAtividade = new Date().toISOString();
@@ -69,6 +102,12 @@ function salvarUsuario(usuario) {
 function adicionarHistorico(id, pergunta, resposta) {
 
     const usuario = carregarUsuario(id);
+
+    const nomeEncontrado = pergunta.match(/meu nome é\s+(.+)/i);
+
+    if (nomeEncontrado) {
+        usuario.nome = nomeEncontrado[1].trim();
+    }
 
     usuario.historico.push({
         data: new Date().toISOString(),
@@ -100,15 +139,10 @@ function listarUsuarios() {
 }
 
 module.exports = {
-
     carregarUsuario,
-
     salvarUsuario,
-
     adicionarHistorico,
-
     obterHistorico,
-
     listarUsuarios
-
 };
+
