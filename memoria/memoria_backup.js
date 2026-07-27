@@ -138,74 +138,11 @@ function listarUsuarios() {
         ));
 }
 
-function aprenderAutomaticamente(usuario, mensagem) {
-
-    if (!usuario.perfil) usuario.perfil = {};
-
-    usuario.perfil.nome = usuario.perfil.nome || usuario.nome || "";
-    usuario.perfil.cidade = usuario.perfil.cidade || "";
-    usuario.perfil.estado = usuario.perfil.estado || "";
-    usuario.perfil.pais = usuario.perfil.pais || "";
-    usuario.perfil.profissao = usuario.perfil.profissao || "";
-
-    if (!Array.isArray(usuario.perfil.projetos))
-        usuario.perfil.projetos = [];
-
-    if (!Array.isArray(usuario.perfil.objetivos))
-        usuario.perfil.objetivos = [];
-
-    if (!Array.isArray(usuario.perfil.interesses))
-        usuario.perfil.interesses = [];
-
-    const texto = mensagem.toLowerCase();
-
-    if (texto.includes("meu nome é")) {
-        usuario.perfil.nome = mensagem.split(/meu nome é/i)[1].trim();
-    }
-
-    if (texto.includes("moro em")) {
-        usuario.perfil.cidade = mensagem.split(/moro em/i)[1].trim();
-    }
-
-    if (texto.includes("trabalho como")) {
-        usuario.perfil.profissao = mensagem.split(/trabalho como/i)[1].trim();
-    }
-
-    if (texto.includes("meu projeto é")) {
-        const projeto = mensagem.split(/meu projeto é/i)[1].trim();
-
-        if (!usuario.perfil.projetos.includes(projeto)) {
-            usuario.perfil.projetos.push(projeto);
-        }
-    }
-
-    if (texto.includes("meu objetivo é")) {
-        const objetivo = mensagem.split(/meu objetivo é/i)[1].trim();
-
-        if (!usuario.perfil.objetivos.includes(objetivo)) {
-            usuario.perfil.objetivos.push(objetivo);
-        }
-    }
-
-    if (texto.includes("gosto de")) {
-        const interesse = mensagem.split(/gosto de/i)[1].trim();
-
-        if (!usuario.perfil.interesses.includes(interesse)) {
-            usuario.perfil.interesses.push(interesse);
-        }
-    }
-
-    salvarUsuario(usuario);
-
-    return usuario;
-}
-
 module.exports = {
     carregarUsuario,
     salvarUsuario,
     adicionarHistorico,
     obterHistorico,
-    listarUsuarios,
-    aprenderAutomaticamente
+    listarUsuarios
 };
 

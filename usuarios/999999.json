@@ -1,0 +1,25 @@
+{
+  "id": 999999,
+  "nome": "Teste",
+  "autorizado": false,
+  "administrador": false,
+  "bloqueado": false,
+  "criadoEm": "2026-07-26T21:45:06.529Z",
+  "ultimaAtividade": "2026-07-26T21:45:06.532Z",
+  "perfil": {
+    "nome": "Teste",
+    "cidade": "",
+    "estado": "",
+    "pais": "",
+    "profissao": "",
+    "projetos": [
+      "NaldoIA"
+    ],
+    "objetivos": [
+      "criar um agente especialista"
+    ],
+    "interesses": []
+  },
+  "preferencias": {},
+  "historico": []
+}
