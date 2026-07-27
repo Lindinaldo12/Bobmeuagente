@@ -61,7 +61,7 @@ Regras:
 
     // Chamada enviando o promptFinal para o modelo Gemini Lite
     const result = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.0-flash",
       contents: [
         {
           role: "user",
