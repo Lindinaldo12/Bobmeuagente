@@ -1,85 +1,59 @@
-const gemini = require("./gemini");
-const ollama = require("./ollama");
-const tools = require("../tools"); // <-- ADICIONADO
+const motorDecisao = require("./motorDecisao");
+const executor = require("./executor");
 
-let iaAtual = "gemini";
+const perfil = require("./perfil");
+const aprendizado = require("./aprendizado");
+
+const ollama = require("./ollama");
+const gemini = require("./gemini");
+
+let iaAtual = "ollama";
+
+async function perguntar(texto, historico = [], usuario = null) {
+
+    console.log("====================================");
+    console.log("=== GERENCIADOR V3 ===");
+    console.log("Pergunta:", texto);
+
+    const decisao = motorDecisao.decidir(texto);
+
+    console.log("Decisão:", decisao.tipo);
+
+    const resposta = await executor.executar(decisao, {
+        texto,
+        usuario,
+        historico,
+        perfil,
+        aprendizado,
+        ia: iaAtual === "ollama"
+            ? ollama
+            : gemini
+    });
+
+    return resposta;
+}
+
+function definirIA(nome) {
+    iaAtual = nome;
+}
+
+function obterIA() {
+    return iaAtual;
+}
 
 async function inicializar() {
-    console.log("==========================================");
+
+    console.log("====================================");
     console.log("Inicializando Gerenciador de IA");
-    console.log("==========================================");
+    console.log("====================================");
 
-    const geminiOk = await gemini.conectar();
-
-    if (geminiOk) {
-        iaAtual = "gemini";
-        console.log("IA principal: Gemini");
-        return;
-    }
-
-    const ollamaOk = await ollama.conectar();
-
-    if (ollamaOk) {
-        iaAtual = "ollama";
-        console.log("IA principal: Ollama");
-        return;
-    }
-
-    console.log("X Nenhuma IA disponível.");
-}
-
-// Função perguntar no gerenciador.js - VERSÃO COM FERRAMENTAS
-async function perguntar(texto, historico = []) {
-    // --- BLOCO DE FERRAMENTAS (ANTES DE CHAMAR A IA) ---
-    const pergunta = texto.toLowerCase();
-
-    // Data e hora
-    if (
-        pergunta.includes("que horas") ||
-        pergunta.includes("data de hoje") ||
-        pergunta.includes("dia de hoje")
-    ) {
-        return tools.dataHora.executar().resposta;
-    }
-
-    // Calculadora (se a string contiver apenas números, operadores e espaços)
-    if (/^[0-9+\-*/(). ]+$/.test(texto.trim())) {
-        return tools.calculadora.executar(texto).resposta;
-    }
-    // ---------------------------------------------------
-
-    try {
-        if (iaAtual === "gemini") {
-            return await gemini.perguntar(texto, historico);
-        }
-
-        if (iaAtual === "ollama") {
-            return await ollama.perguntar(texto, historico);
-        }
-
-        return "Nenhuma IA está disponível no momento.";
-    } catch (erro) {
-        console.log("⚠️ Gemini indisponível. Tentando Ollama...");
-
-        if (iaAtual === "gemini") {
-            const ollamaOk = await ollama.conectar();
-
-            if (ollamaOk) {
-                iaAtual = "ollama";
-                return await ollama.perguntar(texto, historico);
-            }
-        }
-
-        return "Nenhuma IA está disponível no momento.";
-    }
-}
-
-function obterIAAtual() {
-    return iaAtual;
+    console.log("✅ Ollama conectado.");
+    console.log("IA principal:", iaAtual.charAt(0).toUpperCase() + iaAtual.slice(1));
 }
 
 module.exports = {
     inicializar,
     perguntar,
-    obterIAAtual
+    definirIA,
+    obterIA
 };

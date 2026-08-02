@@ -3,6 +3,8 @@ require("dotenv").config();
 // Novas dependências para o sistema de log
 const fs = require("fs");
 const path = require("path");
+const pipeline = require("./pipeline/pipeline");
+const fluxo = require("./core/fluxo");
 
 const express = require("express");
 
@@ -35,19 +37,19 @@ app.listen(PORT, () => {
 
 (async () => {
     try {
-        // Inicializa o Core
-        inicializar();
+        // Inicializa o Core (Aguardando a verificação do DB)
+        await inicializar();
 
         console.log("");
         console.log("==========================================");
-        log("🧠 Inicializando Inteligência Artificial...");
+        log(" Inicializando Inteligência Artificial...");
         console.log("==========================================");
 
         await ia.inicializar();
 
         console.log("");
         console.log("==========================================");
-        log("🤖 Iniciando Telegram...");
+        log(" Iniciando Telegram...");
         console.log("==========================================");
 
         const bot = criarBot();
@@ -72,7 +74,7 @@ app.listen(PORT, () => {
     } catch (erro) {
         console.error("");
         console.error("==========================================");
-        log(`❌ ERRO AO INICIAR O BOB`);
+        log("❌ ERRO AO INICIAR O BOB");
         console.error("==========================================");
         console.error(erro);
     }
@@ -81,14 +83,13 @@ app.listen(PORT, () => {
 // Tratamento de rejeições de Promises não capturadas
 process.on("unhandledRejection", (erro) => {
     console.error("");
-    log(`❌ Unhandled Rejection:`);
+    log("❌ Unhandled Rejection:");
     console.error(erro);
 });
 
-// Tratamento de exceções não capturadas que quebrariam o processo
+// Tratamento de exceções não capturadas
 process.on("uncaughtException", (erro) => {
     console.error("");
-    log(`❌ Uncaught Exception:`);
+    log("❌ Uncaught Exception:");
     console.error(erro);
 });
-

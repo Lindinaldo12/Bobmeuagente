@@ -3,7 +3,6 @@ const historico = require("./historico");
 const aprendizado = require("./aprendizado");
 
 module.exports = {
-
     carregarUsuario: usuario.carregarUsuario,
 
     salvarUsuario: usuario.salvarUsuario,
@@ -12,7 +11,10 @@ module.exports = {
 
     obterHistorico: historico.obterHistorico,
 
-    aprenderAutomaticamente: aprendizado.aprender
+    // Compatibilidade com o código antigo
+    aprender: aprendizado.aprender,
 
+    // Novo nome da função
+    aprenderAutomaticamente: aprendizado.aprender
 };
 

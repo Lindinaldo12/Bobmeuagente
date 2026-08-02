@@ -1,0 +1,25 @@
+{
+  "agentes": [
+    {
+      "nome": "Programador",
+      "categoria": "Desenvolvimento",
+      "palavras": [
+        "código",
+        "codigo",
+        "função",
+        "funcao",
+        "classe",
+        "api",
+        "node",
+        "javascript",
+        "react",
+        "flutter",
+        "python",
+        "rust",
+        "site",
+        "aplicativo",
+        "projeto"
+      ]
+    }
+  ]
+}

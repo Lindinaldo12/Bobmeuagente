@@ -1,0 +1,11 @@
+{
+  "name": "{{NOME}}",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "npm test"
+  },
+  "license": "MIT"
+}

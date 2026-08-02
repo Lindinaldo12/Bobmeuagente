@@ -1,211 +1,71 @@
 const fs = require("fs");
 const path = require("path");
 
-const pastaUsuarios = path.join(__dirname, "usuarios");
+const arquivo = path.join(__dirname, "memoria.json");
 
-if (!fs.existsSync(pastaUsuarios)) {
-    fs.mkdirSync(pastaUsuarios, { recursive: true });
-}
-
-function caminhoUsuario(id) {
-    return path.join(pastaUsuarios, `${id}.json`);
-}
-
-function criarUsuario(id, nome = "") {
-    const usuario = {
-        id,
-        nome,
-
-        autorizado: false,
-        administrador: false,
-        bloqueado: false,
-
-        criadoEm: new Date().toISOString(),
-        ultimaAtividade: new Date().toISOString(),
-
-        perfil: {
-            nome: nome || "",
-            apelido: "",
-            cidade: "",
-            estado: "",
-            pais: "",
-            profissao: "",
-            empresa: "",
-            email: "",
-            telefone: "",
-            idioma: "pt-BR",
-            interesses: [],
-            observacoes: []
-        },
-
-        preferencias: {},
-
-        historico: []
-    };
-
-    salvarUsuario(usuario);
-
-    return usuario;
-}
-
-function carregarUsuario(id, nome = "") {
-
-    const arquivo = caminhoUsuario(id);
-
+function carregar() {
     if (!fs.existsSync(arquivo)) {
-        return criarUsuario(id, nome);
+        return {};
     }
 
-    const usuario = JSON.parse(
-        fs.readFileSync(arquivo, "utf8")
-    );
-
-    if (!usuario.perfil) {
-        usuario.perfil = {
-            nome: usuario.nome || "",
-            apelido: "",
-            cidade: "",
-            estado: "",
-            pais: "",
-            profissao: "",
-            empresa: "",
-            email: "",
-            telefone: "",
-            idioma: "pt-BR",
-            interesses: [],
-            observacoes: []
-        };
+    try {
+        const dados = fs.readFileSync(arquivo, "utf8");
+        return JSON.parse(dados);
+    } catch (error) {
+        console.error("Erro ao carregar o arquivo JSON:", error.message);
+        return {};
     }
-
-    if (nome && usuario.nome !== nome) {
-        usuario.nome = nome;
-        usuario.perfil.nome = nome;
-    }
-
-    usuario.ultimaAtividade = new Date().toISOString();
-
-    salvarUsuario(usuario);
-
-    return usuario;
 }
 
-function salvarUsuario(usuario) {
-
-    fs.writeFileSync(
-        caminhoUsuario(usuario.id),
-        JSON.stringify(usuario, null, 2)
-    );
-
-    return true;
+function salvar(memoria) {
+    try {
+        fs.writeFileSync(arquivo, JSON.stringify(memoria, null, 2), "utf8");
+    } catch (error) {
+        console.error("Erro ao salvar no arquivo JSON:", error.message);
+    }
 }
 
-function adicionarHistorico(id, pergunta, resposta) {
-
-    const usuario = carregarUsuario(id);
-
-    const nomeEncontrado = pergunta.match(/meu nome é\s+(.+)/i);
-
-    if (nomeEncontrado) {
-        usuario.nome = nomeEncontrado[1].trim();
-    }
-
-    usuario.historico.push({
-        data: new Date().toISOString(),
-        pergunta,
-        resposta
-    });
-
-    if (usuario.historico.length > 30) {
-        usuario.historico.shift();
-    }
-
-    salvarUsuario(usuario);
+function definir(chave, valor) {
+    const memoria = carregar();
+    memoria[chave] = valor;
+    salvar(memoria);
 }
 
-function obterHistorico(id) {
-
-    const usuario = carregarUsuario(id);
-
-    return usuario.historico;
+function obter(chave) {
+    const memoria = carregar();
+    return memoria[chave];
 }
 
-function listarUsuarios() {
+// --- FUNÇÕES POR USUÁRIO ---
 
-    return fs.readdirSync(pastaUsuarios)
-        .filter(a => a.endsWith(".json"))
-        .map(a => JSON.parse(
-            fs.readFileSync(path.join(pastaUsuarios, a), "utf8")
-        ));
+function definirUsuario(idUsuario, chave, valor) {
+    const memoria = carregar();
+
+    if (!memoria[idUsuario]) {
+        memoria[idUsuario] = {};
+    }
+
+    memoria[idUsuario][chave] = valor;
+
+    salvar(memoria);
 }
 
-function aprenderAutomaticamente(usuario, mensagem) {
+function obterUsuario(idUsuario, chave) {
+    const memoria = carregar();
 
-    if (!usuario.perfil) usuario.perfil = {};
-
-    usuario.perfil.nome = usuario.perfil.nome || usuario.nome || "";
-    usuario.perfil.cidade = usuario.perfil.cidade || "";
-    usuario.perfil.estado = usuario.perfil.estado || "";
-    usuario.perfil.pais = usuario.perfil.pais || "";
-    usuario.perfil.profissao = usuario.perfil.profissao || "";
-
-    if (!Array.isArray(usuario.perfil.projetos))
-        usuario.perfil.projetos = [];
-
-    if (!Array.isArray(usuario.perfil.objetivos))
-        usuario.perfil.objetivos = [];
-
-    if (!Array.isArray(usuario.perfil.interesses))
-        usuario.perfil.interesses = [];
-
-    const texto = mensagem.toLowerCase();
-
-    if (texto.includes("meu nome é")) {
-        usuario.perfil.nome = mensagem.split(/meu nome é/i)[1].trim();
+    if (!memoria[idUsuario]) {
+        return null;
     }
 
-    if (texto.includes("moro em")) {
-        usuario.perfil.cidade = mensagem.split(/moro em/i)[1].trim();
-    }
-
-    if (texto.includes("trabalho como")) {
-        usuario.perfil.profissao = mensagem.split(/trabalho como/i)[1].trim();
-    }
-
-    if (texto.includes("meu projeto é")) {
-        const projeto = mensagem.split(/meu projeto é/i)[1].trim();
-
-        if (!usuario.perfil.projetos.includes(projeto)) {
-            usuario.perfil.projetos.push(projeto);
-        }
-    }
-
-    if (texto.includes("meu objetivo é")) {
-        const objetivo = mensagem.split(/meu objetivo é/i)[1].trim();
-
-        if (!usuario.perfil.objetivos.includes(objetivo)) {
-            usuario.perfil.objetivos.push(objetivo);
-        }
-    }
-
-    if (texto.includes("gosto de")) {
-        const interesse = mensagem.split(/gosto de/i)[1].trim();
-
-        if (!usuario.perfil.interesses.includes(interesse)) {
-            usuario.perfil.interesses.push(interesse);
-        }
-    }
-
-    salvarUsuario(usuario);
-
-    return usuario;
+    return memoria[idUsuario][chave] ?? null;
 }
 
 module.exports = {
-    carregarUsuario,
-    salvarUsuario,
-    adicionarHistorico,
-    obterHistorico,
-    listarUsuarios,
-    aprenderAutomaticamente
+    carregar,
+    salvar,
+    definir,
+    obter,
+    definirUsuario,
+    obterUsuario
 };
 

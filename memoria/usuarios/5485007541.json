@@ -1,0 +1,32 @@
+{
+  "id": 5485007541,
+  "nome": "Terapia Lindinaldo",
+  "autorizado": false,
+  "administrador": false,
+  "bloqueado": false,
+  "criadoEm": "2026-08-01T10:21:59.101Z",
+  "ultimaAtividade": "2026-08-01T10:22:47.035Z",
+  "perfil": {
+    "nome": "Terapia Lindinaldo",
+    "cidade": "",
+    "estado": "",
+    "pais": "",
+    "profissao": "",
+    "projetos": [],
+    "objetivos": [],
+    "interesses": []
+  },
+  "preferencias": {},
+  "historico": [
+    {
+      "data": "2026-08-01T10:22:46.448Z",
+      "pergunta": "Olá",
+      "resposta": "Olá! Como posso ajudar você hoje?"
+    },
+    {
+      "data": "2026-08-01T10:22:56.248Z",
+      "pergunta": "Quem é você?",
+      "resposta": "Olá! Me chamo Bob e sou um assistente virtual criado pelo José Lindinaldo do Nascimento Luiz para ajudar a responder perguntas e realizar tarefas. Fico feliz em te atender!"
+    }
+  ]
+}

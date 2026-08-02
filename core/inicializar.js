@@ -1,6 +1,7 @@
 const config = require("../config/config");
+const servicos = require("./servicos");
 
-function inicializar() {
+async function inicializar() {
     console.log("==================================");
     console.log(`${config.app.nome} v${config.app.versao}`);
     console.log("Bob Core");
@@ -8,8 +9,13 @@ function inicializar() {
 
     console.log("✅ Configuração carregada.");
     console.log("✅ Core inicializado.");
+
+    console.log("");
+    console.log("🔧 Verificando serviços...");
+    await servicos.verificarOllama();
 }
 
 module.exports = {
     inicializar
 };
+

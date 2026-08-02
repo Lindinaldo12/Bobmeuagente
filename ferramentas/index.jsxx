@@ -1,0 +1,28 @@
+const dataHora = require("./sistema/dataHora");
+const calculadora = require("./sistema/calculadora");
+const notas = require("./produtividade/notas");
+
+const ferramentas = [
+    dataHora,
+    calculadora,
+    notas
+];
+
+function executar(texto) {
+
+    for (const ferramenta of ferramentas) {
+
+        const resposta = ferramenta.executar(texto);
+
+        if (resposta) {
+            return resposta;
+        }
+
+    }
+
+    return null;
+}
+
+module.exports = {
+    executar
+};

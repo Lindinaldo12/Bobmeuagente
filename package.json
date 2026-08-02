@@ -6,7 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "start": "node bot.js",
-    "dev": "node bot.js"
+    "dev": "node bot.js",
+    "test": "node tests/test_motor.js && node tests/test_executor.js"
   },
   "keywords": [
     "telegram",
