@@ -1,9 +1,66 @@
-{
-  "categorias": [
-    "programacao",
-    "linux",
-    "redes",
-    "ia",
-    "hacking"
-  ]
-}
+[
+  {
+    "nome": "kali.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/hacking/kali.md"
+  },
+  {
+    "nome": "pentest.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/hacking/pentest.md"
+  },
+  {
+    "nome": "web.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/hacking/web.md"
+  },
+  {
+    "nome": "llm.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/ia/llm.md"
+  },
+  {
+    "nome": "ollama.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/ia/ollama.md"
+  },
+  {
+    "nome": "rag.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/ia/rag.md"
+  },
+  {
+    "nome": "comandos.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/linux/comandos.md"
+  },
+  {
+    "nome": "servidores.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/linux/servidores.md"
+  },
+  {
+    "nome": "sistema.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/linux/sistema.md"
+  },
+  {
+    "nome": "git.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/programacao/git.md"
+  },
+  {
+    "nome": "javascript.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/programacao/javascript.md"
+  },
+  {
+    "nome": "nodejs.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/programacao/nodejs.md"
+  },
+  {
+    "nome": "python.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/programacao/python.md"
+  },
+  {
+    "nome": "dns.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/redes/dns.md"
+  },
+  {
+    "nome": "firewall.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/redes/firewall.md"
+  },
+  {
+    "nome": "tcpip.md",
+    "caminho": "/data/data/com.termux/files/home/Bob/conhecimento/redes/tcpip.md"
+  }
+]

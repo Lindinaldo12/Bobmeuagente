@@ -17,11 +17,19 @@ function adicionarHistorico(usuario, pergunta, resposta) {
 function obterHistorico(usuario) {
     usuario.historico ??= [];
 
-    return usuario.historico;
+    return usuario.historico.flatMap(item => [
+        {
+            role: "user",
+            content: item.pergunta
+        },
+        {
+            role: "assistant",
+            content: item.resposta
+        }
+    ]);
 }
 
 module.exports = {
     adicionarHistorico,
     obterHistorico
 };
-

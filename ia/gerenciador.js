@@ -10,8 +10,7 @@ const gemini = require("./gemini");
 let iaAtual = "ollama";
 
 async function perguntar(texto, historico = [], usuario = null) {
-
-    console.log("====================================");
+    console.log("========================================");
     console.log("=== GERENCIADOR V3 ===");
     console.log("Pergunta:", texto);
 
@@ -33,6 +32,33 @@ async function perguntar(texto, historico = [], usuario = null) {
     return resposta;
 }
 
+// NOVA FUNÇÃO: perguntarEspecialista
+async function perguntarEspecialista(
+    prompt,
+    pergunta,
+    historico = [],
+    usuario = null
+) {
+    const resposta = await executor.executar(
+        {
+            tipo: "especialista",
+            prompt
+        },
+        {
+            texto: pergunta,
+            usuario,
+            historico,
+            perfil,
+            aprendizado,
+            ia: iaAtual === "ollama"
+                ? ollama
+                : gemini
+        }
+    );
+
+    return resposta;  // ← IMPORTANTE: não esquecer!
+}
+
 function definirIA(nome) {
     iaAtual = nome;
 }
@@ -42,10 +68,9 @@ function obterIA() {
 }
 
 async function inicializar() {
-
-    console.log("====================================");
+    console.log("========================================");
     console.log("Inicializando Gerenciador de IA");
-    console.log("====================================");
+    console.log("========================================");
 
     console.log("✅ Ollama conectado.");
     console.log("IA principal:", iaAtual.charAt(0).toUpperCase() + iaAtual.slice(1));
@@ -54,6 +79,7 @@ async function inicializar() {
 module.exports = {
     inicializar,
     perguntar,
+    perguntarEspecialista,
     definirIA,
     obterIA
 };

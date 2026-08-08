@@ -7,7 +7,7 @@ const gerenciadorFerramentas = require("../ferramentas/gerenciador");
 function responder(usuario, pergunta) {
     const texto = pergunta.toLowerCase();
 
-    // Ficha pronta com tudo do usuário (impressa UMA vez na inicialização)
+    // Ficha pronta com tudo do usuário (impressa UMA vez no início)
     const dados = conhecimento.listarPerfil(usuario);
 
     // --- RESUMO DO CONHECIMENTO ---
@@ -24,13 +24,10 @@ function responder(usuario, pergunta) {
     // --- PREFERÊNCIAS (GENÉRICO) ---
     for (const config of PREFERENCIAS) {
         if (texto.includes(config.perguntar)) {
-            const valor = preferencias.obter(
-                usuario,
-                config.chave
-            );
+            const valor = preferencias.obter(usuario, config.chave);
 
             if (!valor) {
-                return `Você ainda não me disse ${config.re}.`;
+                return `Você ainda não me disse ${config.resposta}.`;
             }
 
             return `${config.resposta} ${valor}.`;
@@ -46,9 +43,7 @@ function responder(usuario, pergunta) {
         /o que voce sabe fazer/i.test(texto) ||
         /como posso usar/i.test(texto)
     ) {
-
         return gerenciadorFerramentas.ajuda();
-
     }
 
     // --- NOME ---
@@ -60,11 +55,9 @@ function responder(usuario, pergunta) {
         texto.includes("como eu me chamo")
     ) {
         const nome = dados.nome;
-
         if (nome) {
             return `Seu nome é ${nome}.`;
         }
-
         return "Você ainda não me disse o seu nome.";
     }
 
@@ -76,11 +69,9 @@ function responder(usuario, pergunta) {
         texto.includes("em que cidade eu moro")
     ) {
         const cidade = dados.cidade;
-
         if (cidade) {
             return `Você mora em ${cidade}.`;
         }
-
         return "Você ainda não me disse onde mora.";
     }
 
@@ -93,12 +84,10 @@ function responder(usuario, pergunta) {
         texto.includes("qual minha profissão")
     ) {
         const profissao = dados.profissao;
-
         if (profissao) {
             return `Sua profissão é ${profissao}.`;
         }
-
-        return "Você ainda não me disse sua profissão.";
+        return "Você ainda não me disse qual é sua profissão.";
     }
 
     // --- PROJETOS ---
@@ -113,11 +102,9 @@ function responder(usuario, pergunta) {
         if (projetos.length === 0) {
             return "Você ainda não me contou quais são seus projetos.";
         }
-
         if (projetos.length === 1) {
             return `Seu projeto é ${projetos[0]}.`;
         }
-
         return `Seus projetos são: ${projetos.join(", ")}.`;
     }
 
@@ -133,11 +120,9 @@ function responder(usuario, pergunta) {
         if (objetivos.length === 0) {
             return "Você ainda não me contou quais são seus objetivos.";
         }
-
         if (objetivos.length === 1) {
             return `Seu objetivo é ${objetivos[0]}.`;
         }
-
         return `Seus objetivos são: ${objetivos.join(", ")}.`;
     }
 
@@ -153,7 +138,6 @@ function responder(usuario, pergunta) {
         if (!ultimoProjeto) {
             return "Ainda não sei a qual projeto você está se referindo.";
         }
-
         return `Você está falando do projeto ${ultimoProjeto}.`;
     }
 
@@ -165,9 +149,8 @@ function responder(usuario, pergunta) {
         const ultimoObjetivo = contexto.obter(usuario.id, "ultimo_objetivo");
 
         if (!ultimoObjetivo) {
-            return "Você ainda não me contou qual é o seu objetivo.";
+            return "Você ainda não me contou qual é o seu objetivo mais recente.";
         }
-
         return `Seu objetivo mais recente é ${ultimoObjetivo}.`;
     }
 
@@ -181,10 +164,35 @@ function responder(usuario, pergunta) {
         const ultimo = contexto.ultimo(usuario.id);
 
         if (!ultimo) {
-            return "Ainda não há contexto suficiente para saber do que você está falando.";
+            return "Ainda não há contexto suficiente para saber a que você se refere.";
         }
-
         return `Você está se referindo a: ${ultimo.valor}.`;
+    }
+
+    // --- IDENTIDADE DO BOB AI X ---
+    if (
+        texto.includes("quem é você") ||
+        texto.includes("quem e voce") ||
+        texto.includes("qual é o seu nome") ||
+        texto.includes("qual e o seu nome") ||
+        texto.includes("como você se chama") ||
+        texto.includes("como voce se chama") ||
+        texto.includes("quem criou você") ||
+        texto.includes("quem criou voce") ||
+        texto.includes("você é qwen") ||
+        texto.includes("voce e qwen") ||
+        texto.includes("você é chatgpt") ||
+        texto.includes("voce e chatgpt") ||
+        texto.includes("você é openai") ||
+        texto.includes("voce e openai") ||
+        texto.includes("você é alibaba") ||
+        texto.includes("voce e alibaba")
+    ) {
+        return `Eu sou o Bob AI X, um Sistema Operacional de Agentes Inteligentes criado por José Lindinaldo do Nascimento Luiz.
+
+Meu objetivo é ajudar você utilizando agentes especializados, memória, base de conhecimento e inteligência artificial.
+
+Não sou Qwen, ChatGPT, OpenAI nem Alibaba Cloud. Esses podem ser apenas modelos ou tecnologias utilizadas internamente, mas minha identidade é Bob AI X.`;
     }
 
     return null;

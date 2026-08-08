@@ -22,6 +22,14 @@ async function executar(decisao, contexto) {
                 contexto.historico
             );
 
+        case "especialista":
+            return await contexto.ia.perguntarEspecialista(
+                decisao.prompt,
+                contexto.texto,
+                contexto.historico,
+                contexto.usuario
+            );
+
         case "ferramenta":
             return await ferramentas.executar(
                 contexto.texto,

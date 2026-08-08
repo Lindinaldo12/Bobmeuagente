@@ -11,6 +11,9 @@ const express = require("express");
 const { inicializar } = require("./core/inicializar");
 const { criarBot } = require("./connect/telegram/telegram");
 const ia = require("./ia/gerenciador");
+const indexador = require("./conhecimento/indexador");
+const kernel = require("./kernel/kernel");
+const { inicializarBanco } = require("./database/init");
 
 // --- Configuração do Sistema de Log ---
 const LOG_FILE = path.join(__dirname, "bob.log");
@@ -32,25 +35,35 @@ app.get("/", (req, res) => {
 });
 
 app.listen(PORT, () => {
-    log(`🌐 Servidor Web iniciado na porta ${PORT}`);
+    log(` Servidor Web iniciado na porta ${PORT}`);
 });
 
 (async () => {
     try {
         // Inicializa o Core (Aguardando a verificação do DB)
         await inicializar();
+        
+        // ✅ NOVO: Inicializa o banco de dados
+        await inicializarBanco();
 
         console.log("");
-        console.log("==========================================");
+        console.log("========================================");
         log(" Inicializando Inteligência Artificial...");
-        console.log("==========================================");
+        console.log("========================================");
 
         await ia.inicializar();
 
+        // Indexar Base de Conhecimento
+        console.log("========================================");
+        console.log("📚 Indexando Base de Conhecimento...");
+        console.log("========================================");
+
+        indexador.indexar();
+
         console.log("");
-        console.log("==========================================");
-        log(" Iniciando Telegram...");
-        console.log("==========================================");
+        console.log("========================================");
+        log("📱 Iniciando Telegram...");
+        console.log("========================================");
 
         const bot = criarBot();
 
@@ -64,18 +77,18 @@ app.listen(PORT, () => {
             drop_pending_updates: true,
             onStart: () => {
                 console.log("");
-                console.log("==========================================");
+                console.log("========================================");
                 log("✅ Telegram conectado com sucesso.");
                 log("🚀 Bob está ONLINE.");
-                console.log("==========================================");
+                console.log("========================================");
             }
         });
 
     } catch (erro) {
         console.error("");
-        console.error("==========================================");
-        log("❌ ERRO AO INICIAR O BOB");
-        console.error("==========================================");
+        console.error("========================================");
+        log(" ERRO AO INICIAR O BOB");
+        console.error("========================================");
         console.error(erro);
     }
 })();
@@ -83,7 +96,7 @@ app.listen(PORT, () => {
 // Tratamento de rejeições de Promises não capturadas
 process.on("unhandledRejection", (erro) => {
     console.error("");
-    log("❌ Unhandled Rejection:");
+    log(" Unhandled Rejection:");
     console.error(erro);
 });
 

@@ -3,16 +3,17 @@ const { Bot } = require("grammy");
 const config = require("../../config/config");
 const ia = require("../../ia/gerenciador");
 const memoria = require("../../memoria_v2");
-const orquestrador = require("../../orquestrador/orquestrador");
+const kernel = require("../../kernel/kernel");
 const status = require("../../dashboard/status");
 const { criarContexto } = require("../../core/contexto");
 
 const auth = require("../../core/auth");
 const authSession = require("../../core/authSession");
 const admin = require("./admin");
+const comandosMemoria = require("./comandosMemoria");
 
 // LOG DE CARREGAMENTO
-console.log("🔥 telegram.js carregado com sucesso");
+console.log(" telegram.js carregado com sucesso");
 
 function criarBot() {
     const bot = new Bot(config.telegram.token);
@@ -25,6 +26,7 @@ function criarBot() {
     });
 
     admin.registrarAdmin(bot);
+    comandosMemoria.registrarComandosMemoria(bot);
 
     // COMANDO START
     bot.command("start", async (ctx) => {
@@ -40,50 +42,39 @@ function criarBot() {
         );
     });
 
-    // COMANDO STATUS (DINÂMICO!)
+    // COMANDO STATUS
     bot.command("status", async (ctx) => {
-        await ctx.reply(
-            status.gerarStatus()
-        );
+        await ctx.reply(status.gerarStatus());
     });
 
     // COMANDO AJUDA
     bot.command("ajuda", async (ctx) => {
-        await ctx.reply(
-            `🤖 Bob AI X
+        await ctx.reply(`
+🤖 Bob AI X
 
 Posso ajudar com:
-
- Desenvolvimento de software
-
-📦 Criar projetos
-
-🧪 Gerar testes
-
+Desenvolvimento de software
+ Criar projetos
+🔧 Gerar testes
  Gerar documentação
-
-📝 Gerenciar notas
-
- Memorizar informações
-
-🕒 Data e hora
-
+ Gerenciar notas
+💾 Memorizar informações
+ Data e hora
 ⚙️ Status do sistema
 
-Basta escrever o que deseja fazer.`
-        );
+Basta escrever o que deseja fazer.
+        `);
     });
 
-    // ALTERADO: de "message" para ":text"
+    // RECEBER MENSAGENS DE TEXTO
     bot.on(":text", async (ctx) => {
-        // --- LOG DE EVENTO DO TELEGRAM ---
-        console.log("==========================================");
-        console.log("📩 EVENTO DO TELEGRAM DISPARADO");
+        console.log("========================================");
+        console.log(" EVENTO DO TELEGRAM DISPARADO");
         console.log("Mensagem:", ctx.message.text);
-        console.log("==========================================");
+        console.log("========================================");
 
         try {
-            // CORRIGIDO: carregarUsuario com 'r'
+            // 1. Carrega o usuário
             let usuario = memoria.carregarUsuario(
                 ctx.from.id,
                 ctx.from.first_name
@@ -91,16 +82,14 @@ Basta escrever o que deseja fazer.`
 
             const pergunta = ctx.message.text;
 
-            usuario = memoria.aprenderAutomaticamente(
-                usuario,
-                pergunta
-            );
-
+            // 2. Aprende com a pergunta e salva
+            usuario = memoria.aprenderAutomaticamente(usuario, pergunta);
             memoria.salvarUsuario(usuario);
 
+            // 3. Pega o histórico
             const historico = memoria.obterHistorico(usuario);
 
-            // CRIAR CONTEXTO COMPLETO
+            // 4. Cria o contexto completo para o Kernel
             const contexto = criarContexto({
                 texto: pergunta,
                 usuario,
@@ -110,38 +99,58 @@ Basta escrever o que deseja fazer.`
                 telegram: ctx
             });
 
-            // ORQUESTRADOR: decide se resolve ou manda pra IA
-            console.log(">>> Orquestrador decidindo...");
-            const resultado = orquestrador.processar(contexto);
-
-            let resposta;
-
-            if (resultado.status === "agente") {
-                console.log("✅ Orquestrador resolveu sozinho");
-                resposta = resultado.resposta;
-            } else {
-                console.log(" Mandando pra IA...");
-                resposta = await ia.perguntar(
-                    pergunta,
-                    historico,
-                    usuario
-                );
+            // 5. CHAMADA DO KERNEL (VERSÃO TEMPORÁRIA DE DEBUG)
+            // PORTÃO DE SEGURANÇA
+            if (!auth.isMaster(ctx.from.id) && !auth.isAdmin(ctx.from.id) && !auth.isAuthorized(memoria.carregarUsuario(ctx.from.id))) {
+                await ctx.reply(" Acesso negado. Você não tem permissão para usar o Bob AI X.");
+                return;
             }
+            const resultado = await kernel.executar(contexto);
 
-            console.log("✅ IA respondeu");
+            console.log("TIPO RESULTADO:", typeof resultado);
+            console.dir(resultado, { depth: null });
 
-            // Salva a conversa no histórico
-            usuario = memoria.adicionarHistorico(
-                usuario,
-                pergunta,
-                resposta
-            );
+            const resposta =
+                typeof resultado === "string"
+                    ? resultado
+                    : resultado?.resposta;
 
+            console.log("✅ Resposta gerada pelo Kernel");
+
+            // 6. Salva a conversa no histórico (memoria_v2)
+            usuario = memoria.adicionarHistorico(usuario, pergunta, resposta);
             memoria.salvarUsuario(usuario);
 
-            // Envia a resposta ao usuário
-            await ctx.reply(resposta);
+            // 7. ✅ ENVIA A RESPOSTA (COM LOG APLICADO PELO TUTORIAL)
+            try {
+                console.log("===== ENVIANDO PARA O TELEGRAM =====");
+                console.log("Resposta:", resposta);
+
+                const LIMITE = 3800;
+
+                if (resposta && resposta.length <= LIMITE) {
+                    // ✅ MODIFICAÇÃO DO TUTORIAL APLICADA AQUI:
+                    const enviada = await ctx.reply(resposta);
+                    
+                    console.log("===== TELEGRAM RESPONDEU =====");
+                    console.dir(enviada, { depth: null });
+                    
+                } else if (resposta) {
+                    for (let i = 0; i < resposta.length; i += LIMITE) {
+                        const enviada = await ctx.reply(
+                            resposta.substring(i, i + LIMITE)
+                        );
+                        console.dir(enviada, { depth: null });
+                    }
+                }
+
+            } catch (erro) {
+                console.log("===== ERRO AO ENVIAR =====");
+                console.error(erro);
+            }
+
             console.log("✅ Resposta enviada ao Telegram");
+
         } catch (erro) {
             console.error("Erro no processamento:", erro);
             await ctx.reply("Ocorreu um erro ao processar sua mensagem.");

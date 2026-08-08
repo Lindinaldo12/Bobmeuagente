@@ -1,61 +1,29 @@
-const projetos = require("../../geradores/projetos");
-const codigo = require("../../geradores/codigo");
-const testes = require("../../geradores/testes");
-const documentacao = require("../../geradores/documentacao");
+const fs = require("fs");
+const path = require("path");
+const { executarEspecialista } = require("../../ia/agenteEspecialista");
+const { pesquisarNaWeb } = require("../../ferramentas/pesquisaWeb");
 
-function executar(contexto) {
+const prompt = fs.readFileSync(path.join(__dirname, "prompt.txt"), "utf8");
 
-    const texto = contexto.texto;
-    const resposta = [];
+async function executar(contexto) {
+    let conhecimentoFinal = contexto.conhecimento || "";
 
-    if (texto.toLowerCase().includes("projeto")) {
-
-        resposta.push(
-            projetos.criarProjeto("NovoProjeto")
-        );
+    // SE NÃO TIVER INFORMAÇÃO LOCAL, USA O BINÓCULO VIP!
+    if (!conhecimentoFinal || conhecimentoFinal.trim() === "") {
+        console.log("📡 Base local vazia. Programador ativando busca na Web...");
+        const resultadoWeb = await pesquisarNaWeb(contexto.texto);
+        conhecimentoFinal = resultadoWeb;
     }
 
-    if (
-        texto.toLowerCase().includes("função") ||
-        texto.toLowerCase().includes("funcao")
-    ) {
+    // REGRA ANTI-ALUCINAÇÃO
+    const regraAntiAlucinacao = "\n\n⚠️ REGRA ABSOLUTA: Se os 'DADOS REAIS DA WIKIPEDIA' acima não responderem à pergunta, responda apenas: 'Desculpe, não encontrei essa informação.' NUNCA invente fatos.";
 
-        resposta.push("");
-
-        resposta.push("📄 Código:");
-
-        resposta.push(
-            codigo.gerar("funcao", "novaFuncao")
-        );
-
-        resposta.push("");
-
-        resposta.push("🧪 Teste:");
-
-        resposta.push(
-            testes.gerar("novaFuncao")
-        );
-
-        resposta.push("");
-
-        resposta.push("📚 Documentação:");
-
-        resposta.push(
-            documentacao.gerar(
-                "novaFuncao",
-                "Função"
-            )
-        );
-    }
-
-    if (resposta.length === 0) {
-
-        return "👨💻 Agente Programador pronto para desenvolver.";
-    }
-
-    return resposta.join("\n");
+    return await executarEspecialista(
+        contexto.texto,
+        conhecimentoFinal + regraAntiAlucinacao,
+        prompt,
+        contexto.usuario
+    );
 }
 
-module.exports = {
-    executar
-};
+module.exports = { executar };

@@ -1,47 +1,56 @@
-const { carregarAgentes } = require("./carregador");
+const { carregarAgentes, carregarAgente } = require("./carregador");
+
+function normalizar(texto) {
+    return texto
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+}
 
 function selecionar(texto) {
 
-    texto = texto.toLowerCase();
-
-    // Pesquisa Web tem prioridade
-    if (
-        texto.startsWith("pesquise ") ||
-        texto.startsWith("procure ")
-    ) {
-        return null;
-    }
+    texto = normalizar(texto);
 
     const agentes = carregarAgentes();
 
-    // Programador
-    if (
-        texto.includes("código") ||
-        texto.includes("codigo") ||
-        texto.includes("programa") ||
-        texto.includes("função") ||
-        texto.includes("funcao") ||
-        texto.includes("classe") ||
-        texto.includes("método") ||
-        texto.includes("metodo") ||
-        texto.includes("algoritmo") ||
-        texto.includes("script") ||
-        texto.includes("site") ||
-        texto.includes("aplicativo") ||
-        texto.includes("app") ||
-        texto.includes("api") ||
-        texto.includes("javascript") ||
-        texto.includes("node") ||
-        texto.includes("python") ||
-        texto.includes("rust") ||
-        texto.startsWith("crie ")
-    ) {
-        return agentes.find(a => a.nome === "Programador");
+    let melhor = null;
+    let maiorPontuacao = 0;
+
+    for (const info of agentes) {
+
+        if (!info.palavrasChave) continue;
+
+        let pontos = 0;
+
+        for (const palavra of info.palavrasChave) {
+
+            const chave = normalizar(palavra);
+
+            if (texto.includes(chave)) {
+                pontos++;
+            }
+        }
+
+        if (pontos > maiorPontuacao) {
+            maiorPontuacao = pontos;
+            melhor = info;
+        }
+
     }
 
-    return null;
+    if (!melhor) {
+        return null;
+    }
+
+    console.log(
+        `🎯 Agente escolhido: ${melhor.nome} (${maiorPontuacao} pontos)`
+    );
+
+    return carregarAgente(melhor.nome.toLowerCase());
+
 }
 
 module.exports = {
-    selecionar
+    selecionar,
+    carregarAgente
 };

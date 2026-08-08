@@ -1,36 +1,33 @@
-const fs = require("fs");
-const path = require("path");
+const { carregarAgentes } = require("../agentes/carregador");
 
-const ARQUIVO = path.join(__dirname, "capacidades.json");
+function listarAgentes() {
+    return carregarAgentes();
+}
 
-function listar() {
-    return JSON.parse(
-        fs.readFileSync(ARQUIVO, "utf8")
+function buscarPorNome(nome) {
+    return carregarAgentes().find(
+        a => a.nome === nome
     );
 }
 
-function buscarAgente(texto) {
+function listarCapacidades() {
 
-    texto = texto.toLowerCase();
+    return carregarAgentes().map(a => ({
 
-    const dados = listar();
+        nome: a.nome,
 
-    for (const agente of dados.agentes) {
+        descricao: a.descricao,
 
-        for (const palavra of agente.palavras) {
+        ferramentas: a.ferramentas || []
 
-            if (texto.includes(palavra)) {
-                return agente;
-            }
+    }));
 
-        }
-
-    }
-
-    return null;
 }
 
 module.exports = {
-    listar,
-    buscarAgente
+
+    listarAgentes,
+    buscarPorNome,
+    listarCapacidades
+
 };

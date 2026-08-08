@@ -1,32 +1,18 @@
-# Dependências
+# Dependências (Nunca suba isso, o Render instala sozinho)
 node_modules/
 
-# Variáveis de ambiente
+# Variáveis de ambiente (SUAS SENHAS)
 .env
+.env.local
+.env.*.local
 
-# Logs
+# Logs e arquivos temporários
 *.log
-logs/
+npm-debug.log*
 
-# Arquivos temporários
-tmp/
-temp/
-
-# Sistema
+# Arquivos de sistema
 .DS_Store
 Thumbs.db
 
-# IDEs
-.vscode/
-.idea/
-
-# Cobertura de testes
-coverage/
-
-# Bancos locais
-*.db
-*.sqlite
-
-# Backups
-*.bak
-*.backup
+# Dados locais sensíveis (Descomente a linha abaixo se não quiser subir a memória local)
+# memoria/fatos.json

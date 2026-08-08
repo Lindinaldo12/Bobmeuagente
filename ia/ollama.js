@@ -1,4 +1,6 @@
+const memoriaLongoPrazo = require("../memoria/longoPrazo");
 const config = require("../config/config");
+const systemPrompt = require("../core/systemPrompt");
 
 async function conectar() {
     try {
@@ -10,7 +12,7 @@ async function conectar() {
             throw new Error("Servidor Ollama indisponível.");
         }
 
-        console.log("✅ Ollama conectado.");
+        console.log("✅ Ollama conectada.");
         return true;
 
     } catch (erro) {
@@ -23,6 +25,9 @@ async function conectar() {
 async function perguntar(pergunta, historico = []) {
     try {
         console.log("1 - Iniciando requisição...");
+        console.log("URL:", "http://127.0.0.1:11434/api/chat");
+        console.log("Modelo:", config.ollama.model);
+        console.log("Enviando requisição...");
 
         const resposta = await fetch("http://127.0.0.1:11434/api/chat", {
             method: "POST",
@@ -34,17 +39,9 @@ async function perguntar(pergunta, historico = []) {
                 messages: [
                     {
                         role: "system",
-                        content: `Você é Bob, um assistente pessoal criado por José Lindinaldo do Nascimento Luiz.
-
-Nunca diga que você é Qwen, Alibaba Cloud ou qualquer outro modelo.
-
-Seu nome é Bob.
-
-Responda sempre em português do Brasil.
-
-Seja educado, claro, objetivo e prestativo.`
+                        content: systemPrompt
                     },
-                    ...historico,
+                    ...(Array.isArray(historico) ? historico.slice(-10) : []),
                     {
                         role: "user",
                         content: pergunta
@@ -62,9 +59,7 @@ Seja educado, claro, objetivo e prestativo.`
         }
 
         console.log("3 - Convertendo JSON...");
-
         const dados = await resposta.json();
-
         console.log("4 - JSON convertido.");
 
         console.log("Resposta do Ollama:");
@@ -79,8 +74,64 @@ Seja educado, claro, objetivo e prestativo.`
     }
 }
 
+// NOVA FUNÇÃO: perguntarEspecialista
+async function perguntarEspecialista(prompt, pergunta, historico = []) {
+    try {
+        console.log("1 - Iniciando requisição do especialista...");
+        console.log("URL:", "http://127.0.0.1:11434/api/chat");
+        console.log("Modelo:", config.ollama.model);
+        
+        // ✅ CRIA O PAYLOAD EXPLÍCITO
+        const payload = {
+            model: config.ollama.model,
+            messages: [
+                {
+                    role: "system",
+                    content: systemPrompt + "\n\n" + prompt
+                  + (usuario ? (memoriaLongoPrazo.lerFatos(usuario.id).length > 0 ? "\n\n🧠 MEMÓRIA SOBRE O USUÁRIO:\n- " + memoriaLongoPrazo.lerFatos(usuario.id).join("\n- ") : "") : "")
+                },
+                ...(Array.isArray(historico) ? historico.slice(-10) : []),
+                {
+                    role: "user",
+                    content: pergunta
+                }
+            ],
+            stream: false
+        };
+
+        // ✅ LOG DO PAYLOAD PARA DEBUG
+        console.log("===== PAYLOAD OLLAMA =====");
+        console.dir(payload, { depth: null });
+        console.log("==========================");
+
+        console.log("Enviando requisição...");
+
+        const resposta = await fetch("http://127.0.0.1:11434/api/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!resposta.ok) {
+            throw new Error(await resposta.text());
+        }
+
+        const dados = await resposta.json();
+
+        return dados.message.content;
+
+    } catch (erro) {
+        console.log("Erro especialista:");
+        console.log(erro.message);
+
+        return "Erro ao consultar o especialista.";
+    }
+}
+
 module.exports = {
     conectar,
-    perguntar
+    perguntar,
+    perguntarEspecialista
 };
-

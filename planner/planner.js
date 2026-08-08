@@ -1,20 +1,92 @@
-function planejar(objetivo) {
+const { classificar } = require("./classificador");
 
-    return {
-        objetivo,
+function criarPlano(texto) {
 
-        status: "planejado",
+    const tipo = classificar(texto);
 
-        etapas: [
-            "Entender o problema",
-            "Escolher a melhor estratégia",
-            "Executar",
-            "Verificar o resultado"
-        ]
-    };
+    switch (tipo) {
+
+        case "professor":
+            return {
+                objetivo: texto,
+                etapas: [
+                    {
+                        nome: "Responder",
+                        agente: "Professor"
+                    }
+                ]
+            };
+
+        case "analista":
+            return {
+                objetivo: texto,
+                etapas: [
+                    {
+                        nome: "Analisar",
+                        agente: "Analista"
+                    }
+                ]
+            };
+
+        case "programador":
+            return {
+                objetivo: texto,
+                etapas: [
+                    {
+                        nome: "Programar",
+                        agente: "Programador"
+                    }
+                ]
+            };
+
+        case "escritor":
+            return {
+                objetivo: texto,
+                etapas: [
+                    {
+                        nome: "Escrever",
+                        agente: "Escritor"
+                    }
+                ]
+            };
+
+        case "seguranca":
+            return {
+                objetivo: texto,
+                etapas: [
+                    {
+                        nome: "Segurança",
+                        agente: "Segurança"
+                    }
+                ]
+            };
+
+        case "pesquisador":
+            return {
+                objetivo: texto,
+                etapas: [
+                    {
+                        nome: "Pesquisar",
+                        agente: "Pesquisador"
+                    }
+                ]
+            };
+
+        default:
+            return {
+                objetivo: texto,
+                etapas: [
+                    {
+                        nome: "Responder",
+                        agente: "Professor"
+                    }
+                ]
+            };
+
+    }
 
 }
 
 module.exports = {
-    planejar
+    criarPlano
 };
