@@ -1,9 +1,9 @@
 const fetch = require('node-fetch');
 
 async function chamarIA(mensagens, modelo) {
-  console.log("🧠 Preparando o cérebro do Bob...");
+  console.log(" Preparando o cérebro do Bob...");
   
-  // Verifica se está usando API externa (OpenRouter/Groq) ou Ollama local
+  // Verifica se está usando API externa (OpenRouter) ou Ollama local
   const urlAPI = process.env.API_URL || process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
   const modeloAPI = process.env.MODEL_NAME || process.env.OLLAMA_MODEL || modelo;
   const apiKey = process.env.API_KEY;
@@ -14,9 +14,8 @@ async function chamarIA(mensagens, modelo) {
   let payload;
   let headers = { 'Content-Type': 'application/json' };
   
-  // Configuração para API externa (OpenRouter/Groq)
   if (apiKey) {
-    console.log("🌐 Usando API de Nuvem:", urlAPI);
+    console.log("🌐 Usando API de Nuvem (OpenRouter):", urlAPI);
     headers['Authorization'] = `Bearer ${apiKey}`;
     headers['HTTP-Referer'] = 'https://github.com/Lindinaldo12/Bobmeuagente';
     
@@ -26,7 +25,6 @@ async function chamarIA(mensagens, modelo) {
       stream: false
     };
   } else {
-    // Configuração para Ollama local
     console.log("💻 Usando Ollama Local:", urlAPI);
     payload = {
       model: modeloAPI,
@@ -35,7 +33,7 @@ async function chamarIA(mensagens, modelo) {
     };
   }
   
-  console.log("🚀 Enviando para a IA...");
+  console.log(" Enviando para a IA...");
   
   try {
     const response = await fetch(urlAPI + '/chat/completions', {
@@ -47,7 +45,7 @@ async function chamarIA(mensagens, modelo) {
     const data = await response.json();
     
     if (!response.ok) {
-      console.error("❌ Erro da API:", data.error || response.statusText);
+      console.error("❌ Erro da API:", JSON.stringify(data));
       throw new Error(data.error?.message || "Erro na API");
     }
     
