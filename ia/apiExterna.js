@@ -1,7 +1,7 @@
 const fetch = require('node-fetch');
 
 async function chamarAPI(pergunta, contextoUsuario) {
-  console.log(" Usando API de Nuvem (OpenRouter)...");
+  console.log("🌐 Usando API de Nuvem (OpenRouter)...");
   
   const url = process.env.API_URL || 'https://openrouter.ai/api/v1';
   const apiKey = process.env.API_KEY;
@@ -9,13 +9,13 @@ async function chamarAPI(pergunta, contextoUsuario) {
   
   if (!apiKey) {
     console.error("❌ API_KEY não configurada!");
-    return "Erro: API_KEY não configurada no servidor.";
+    return "Erro: API_KEY não configurada.";
   }
 
   const payload = {
     model: modelo,
     messages: [
-      { role: 'system', content: 'Você é o Bob AI X, um assistente inteligente e útil.' },
+      { role: 'system', content: 'Você é o Bob AI X, assistente útil.' },
       { role: 'user', content: pergunta }
     ],
     stream: false
@@ -35,15 +35,15 @@ async function chamarAPI(pergunta, contextoUsuario) {
     const data = await response.json();
     
     if (!response.ok) {
-      console.error("❌ Erro da API:", JSON.stringify(data));
-      return "Desculpe, erro ao consultar a IA. Tente novamente.";
+      console.error("❌ Erro API:", JSON.stringify(data));
+      return "Erro ao consultar IA.";
     }
     
     return data.choices[0].message.content;
     
   } catch (error) {
-    console.error("❌ Erro de conexão:", error.message);
-    return "Desculpe, problema de conexão. Tente novamente!";
+    console.error("❌ Erro:", error.message);
+    return "Problema de conexão.";
   }
 }
 
