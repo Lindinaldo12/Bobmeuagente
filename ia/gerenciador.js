@@ -1,85 +1,20 @@
-const motorDecisao = require("./motorDecisao");
-const executor = require("./executor");
+const { chamarAPI } = require('./apiExterna');
 
-const perfil = require("./perfil");
-const aprendizado = require("./aprendizado");
-
-const ollama = require("./ollama");
-const gemini = require("./gemini");
-
-let iaAtual = "ollama";
-
-async function perguntar(texto, historico = [], usuario = null) {
-    console.log("========================================");
-    console.log("=== GERENCIADOR V3 ===");
-    console.log("Pergunta:", texto);
-
-    const decisao = motorDecisao.decidir(texto);
-
-    console.log("Decisão:", decisao.tipo);
-
-    const resposta = await executor.executar(decisao, {
-        texto,
-        usuario,
-        historico,
-        perfil,
-        aprendizado,
-        ia: iaAtual === "ollama"
-            ? ollama
-            : gemini
-    });
-
-    return resposta;
+async function processarMensagem(pergunta, contextoUsuario) {
+  console.log("========================================");
+  console.log("Inicializando Gerenciador de IA");
+  console.log("========================================");
+  
+  // SE TIVER API_KEY, USA A NUVEM (OPENROUTER)
+  if (process.env.API_KEY) {
+    console.log("✅ IA principal: OpenRouter (Nuvem)");
+    console.log("🧠 Modelo:", process.env.MODEL_NAME || 'qwen/qwen2.5-coder-32b');
+    return await chamarAPI(pergunta, contextoUsuario);
+  }
+  
+  // SE NÃO TIVER, TENTA OLLAMA LOCAL (para testes no celular)
+  console.log("️ API_KEY não configurada. Usando Ollama local...");
+  return "Configure a API_KEY no servidor para usar a IA na nuvem.";
 }
 
-// NOVA FUNÇÃO: perguntarEspecialista
-async function perguntarEspecialista(
-    prompt,
-    pergunta,
-    historico = [],
-    usuario = null
-) {
-    const resposta = await executor.executar(
-        {
-            tipo: "especialista",
-            prompt
-        },
-        {
-            texto: pergunta,
-            usuario,
-            historico,
-            perfil,
-            aprendizado,
-            ia: iaAtual === "ollama"
-                ? ollama
-                : gemini
-        }
-    );
-
-    return resposta;  // ← IMPORTANTE: não esquecer!
-}
-
-function definirIA(nome) {
-    iaAtual = nome;
-}
-
-function obterIA() {
-    return iaAtual;
-}
-
-async function inicializar() {
-    console.log("========================================");
-    console.log("Inicializando Gerenciador de IA");
-    console.log("========================================");
-
-    console.log("✅ Ollama conectado.");
-    console.log("IA principal:", iaAtual.charAt(0).toUpperCase() + iaAtual.slice(1));
-}
-
-module.exports = {
-    inicializar,
-    perguntar,
-    perguntarEspecialista,
-    definirIA,
-    obterIA
-};
+module.exports = { processarMensagem };
