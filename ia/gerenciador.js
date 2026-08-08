@@ -2,10 +2,10 @@ const { chamarAPI } = require('./apiExterna');
 
 async function processarMensagem(pergunta, contextoUsuario) {
   if (process.env.API_KEY) {
-    console.log("✅ IA: OpenRouter (Nuvem)");
-    return await chamarAPI(pergunta, contextoUsuario);
+    console.log("✅ IA: OpenRouter");
+    return await chamarAPI(pergunta);
   }
-  return "Configure API_KEY no servidor.";
+  return "Configure API_KEY";
 }
 
 module.exports = { processarMensagem };
