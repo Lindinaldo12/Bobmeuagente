@@ -1,95 +1,34 @@
-const memoriaLongoPrazo = require("../memoria/longoPrazo");
+const { chamarAPI } = require("./apiExterna");
 
-async function executarEspecialista(
-  perguntaUsuario,
-  documentosDaBase,
-  promptDoAgente,
-  usuario // <-- Agora recebemos o usuário aqui
-) {
-  console.log("🧠 Preparando o cérebro do Bob...");
+async function executarEspecialista(perguntaUsuario, documentosDaBase, promptDoAgente, usuario) {
+    console.log("🧠 Preparando o cérebro do Bob...");
 
-  let textoBaseConhecimento = "";
-  if (documentosDaBase) {
-    if (Array.isArray(documentosDaBase)) {
-      const textos = documentosDaBase.map(function(doc) {
-        return doc.conhecimento || doc.text || "";
-      });
-      textoBaseConhecimento = textos.join("\n\n---\n\n");
-    } else if (documentosDaBase.conhecimento) {
-      textoBaseConhecimento = documentosDaBase.conhecimento;
-    } else if (typeof documentosDaBase === 'string') {
-      textoBaseConhecimento = documentosDaBase;
-    }
-  }
-
-  let avisoBase = "";
-  if (!textoBaseConhecimento) {
-    avisoBase = "\n\n[AVISO]: Base de Conhecimento vazia.";
-  }
-
-  // 🧠 NOVO: Ler a memória de longo prazo do usuário
-  let memoriaUsuario = "";
-  if (usuario && usuario.id) {
-    const fatos = memoriaLongoPrazo.lerFatos(String(usuario.id));
-    if (fatos.length > 0) {
-      memoriaUsuario = "\n\n🧠 MEMÓRIA SOBRE O USUÁRIO (Use estas informações para personalizar sua resposta):\n- " + fatos.join("\n- ");
-    }
-  }
-
-  const promptAgente = promptDoAgente || "Você é um especialista.";
-
-  const systemPromptFinal =
-    promptAgente +
-    memoriaUsuario + // <-- Injetamos a memória aqui, junto com o prompt
-    "\n\n=========================\n" +
-    "BASE DE CONHECIMENTO\n" +
-    "=========================\n" +
-    textoBaseConhecimento +
-    "\n" + avisoBase +
-    "\n\n[INSTRUÇÃO]: Responda usando a base de conhecimento e a memória do usuário fornecidas acima.";
-
-  const payloadOllama = {
-    model: 'qwen2.5-coder:3b',
-    messages: [
-      {
-        role: 'system',
-        content: systemPromptFinal
-      },
-      {
-        role: 'user',
-        content: typeof perguntaUsuario === 'string' ? perguntaUsuario : (perguntaUsuario.texto || 'Mensagem inválida')
-      }
-    ],
-    stream: false
-  };
-
-  console.log("🔍 RAIO-X:");
-  console.log("Modelo:", payloadOllama.model);
-  console.log("Tamanho do prompt:", systemPromptFinal.length);
-
-  try {
-    console.log("🚀 Enviando para o Ollama...");
-    const url = 'http://127.0.0.1:11434/api/chat';
-    const opcoes = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payloadOllama)
-    };
-
-    const response = await fetch(url, opcoes);
-    const data = await response.json();
-
-    if (!response.ok) {
-      const msgErro = data.error || "Erro";
-      console.error("❌ Ollama reclamou:", msgErro);
-      throw new Error(msgErro);
+    let textoBase = "";
+    if (documentosDaBase) {
+        if (Array.isArray(documentosDaBase)) {
+            textoBase = documentosDaBase.map(doc => doc.conhecimento || doc.text || "").join("\n\n");
+        } else if (typeof documentosDaBase === 'string') {
+            textoBase = documentosDaBase;
+        }
     }
 
-    return data.message.content;
-  } catch (error) {
-    console.error("❌ Erro:", error.message);
-    return "Desculpe, tive um probleminha. Tente de novo!";
-  }
+    let memoria = "";
+    if (usuario && usuario.id) {
+        const memoriaLongoPrazo = require("../memoria/longoPrazo");
+        const fatos = memoriaLongoPrazo.lerFatos(String(usuario.id));
+        if (fatos.length > 0) {
+            memoria = "\n\n🧠 MEMÓRIA SOBRE O USUÁRIO:\n- " + fatos.join("\n- ");
+        }
+    }
+
+    const promptFinal = promptDoAgente + memoria + "\n\n📚 BASE DE CONHECIMENTO:\n" + textoBase;
+    const perguntaCompleta = promptFinal + "\n\n❓ PERGUNTA DO USUÁRIO: " + perguntaUsuario;
+
+    console.log(" RAIO-X: Usando API de Nuvem (OpenRouter)");
+    
+    const resposta = await chamarAPI(perguntaCompleta, usuario);
+    
+    return resposta;
 }
 
 module.exports = { executarEspecialista };

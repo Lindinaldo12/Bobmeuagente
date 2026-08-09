@@ -1,27 +1,18 @@
-const { Low } = require("lowdb");
-const { JSONFile } = require("lowdb/node");
+const low = require("lowdb");
+const FileSync = require("lowdb/adapters/FileSync");
 
-const adapter = new JSONFile("./database/bob.json");
+const adapter = new FileSync("./database/bob.json");
+const db = low(adapter);
 
-const db = new Low(adapter, {
+// Define valores padrão se o banco estiver vazio
+db.defaults({
     usuarios: [],
     memoria: [],
     historico: [],
     configuracoes: {}
-});
+}).write();
 
 async function conectar() {
-    await db.read();
-
-    db.data ||= {
-        usuarios: [],
-        memoria: [],
-        historico: [],
-        configuracoes: {}
-    };
-
-    await db.write();
-
     console.log("✅ Banco JSON carregado.");
 }
 
