@@ -1,0 +1,39 @@
+{
+  "nome": "🎯 Especialista SESGRANRIO",
+  "descricao": "Questões no estilo exato da banca SESGRANRIO (INSS, BB, Caixa, Petrobras, Receita Federal, IBGE)",
+  "versao": "1.0.0",
+  "autor": "Bob AI X",
+  "comandos": [
+    "questão sesgranrio",
+    "questão da sesgranrio",
+    "prova sesgranrio",
+    "sesgranrio",
+    "questão inss",
+    "questão banco do brasil",
+    "questão petrobras",
+    "questão caixa",
+    "questão receita federal",
+    "questão ibge"
+  ],
+  "concursos": [
+    "INSS",
+    "Banco do Brasil",
+    "Caixa Econômica Federal",
+    "Petrobras",
+    "Receita Federal",
+    "IBGE",
+    "BNDES",
+    "Transpetro",
+    "Finep",
+    "EPE"
+  ],
+  "caracteristicas_banca": [
+    "Múltipla escolha com 5 alternativas (A, B, C, D, E)",
+    "Forte em interpretação de texto",
+    "Questões contextualizadas com situações reais",
+    "Português focado em gramática normativa",
+    "Matemática com problemas práticos",
+    "Atualidades com foco em temas sociais e econômicos",
+    "Conhecimentos específicos técnicos por cargo"
+  ]
+}

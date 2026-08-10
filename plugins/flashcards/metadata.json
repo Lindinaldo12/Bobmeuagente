@@ -1,0 +1,13 @@
+{
+  "nome": "🎴 Flashcards Automáticos",
+  "descricao": "Cria cartões de memorização para você estudar qualquer assunto",
+  "versao": "1.0.0",
+  "autor": "Bob AI X",
+  "comandos": [
+    "flashcard",
+    "cartão de memorização",
+    "criar flashcard",
+    "memorizar",
+    "revisão"
+  ]
+}

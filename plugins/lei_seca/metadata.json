@@ -1,0 +1,36 @@
+{
+  "nome": "📖 Lei Seca Interativa",
+  "descricao": "Estuda legislação seca (leis, decretos, constituição) com questões e resumos",
+  "versao": "1.0.0",
+  "autor": "Bob AI X",
+  "comandos": [
+    "lei seca",
+    "artigo da lei",
+    "constituição",
+    "constituicao",
+    "código penal",
+    "codigo penal",
+    "clt",
+    "código civil",
+    "codigo civil",
+    "lei",
+    "decreto",
+    "legislação",
+    "legislacao"
+  ],
+  "leis_principais": [
+    "Constituição Federal",
+    "Código Penal",
+    "Código Civil",
+    "CLT",
+    "Código de Processo Civil",
+    "Código de Processo Penal",
+    "Lei 8.112/90 (Servidores Públicos)",
+    "Lei 8.745/93 (Contrato Temporário)",
+    "Lei 8.213/91 (Benefícios Previdenciários)",
+    "Lei 8.747/93 (LOAS)",
+    "Lei 12.527/2011 (Acesso à Informação)",
+    "Lei 8.429/92 (Improbidade Administrativa)",
+    "Lei 9.784/99 (Processo Administrativo)"
+  ]
+}

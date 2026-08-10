@@ -1,0 +1,40 @@
+{
+  "nome": "📚 Questões de Concurso Completo",
+  "descricao": "Gera questões de todas as matérias de concursos públicos (Português, Matemática, Direito, Informática, Raciocínio Lógico, etc.)",
+  "versao": "2.0.0",
+  "autor": "Bob AI X",
+  "comandos": [
+    "gerar questão",
+    "criar questão",
+    "questão de",
+    "exercício de",
+    "questão sobre",
+    "me dá uma questão",
+    "questão de concurso"
+  ],
+  "materias": [
+    "português",
+    "matemática",
+    "raciocínio lógico",
+    "direito constitucional",
+    "direito administrativo",
+    "direito penal",
+    "direito civil",
+    "informática",
+    "atualidades",
+    "administração pública",
+    "contabilidade",
+    "economia",
+    "inglês",
+    "redação oficial",
+    "ética"
+  ],
+  "bancas": [
+    "CESPE/CEBRASPE",
+    "FGV",
+    "FCC",
+    "VUNESP",
+    "IBFC",
+    "CONSULPLAN"
+  ]
+}

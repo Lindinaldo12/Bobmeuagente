@@ -1,0 +1,20 @@
+{
+  "nome": "📚 Biblioteca Espírita (Kardec)",
+  "descricao": "Responde perguntas baseadas nas obras de Allan Kardec e Revistas Espíritas armazenadas localmente",
+  "versao": "1.0.0",
+  "autor": "Bob AI X",
+  "comandos": [
+    "kardec",
+    "espírita",
+    "espírita",
+    "codificação",
+    "livro dos espíritos",
+    "evangelho segundo o espiritismo",
+    "gênese",
+    "céu e inferno",
+    "obras póstumas",
+    "revista espírita",
+    "o que kardec diz",
+    "segundo o espiritismo"
+  ]
+}

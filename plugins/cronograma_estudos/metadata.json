@@ -1,0 +1,13 @@
+{
+  "nome": "📅 Cronograma de Estudos",
+  "descricao": "Cria planos de estudo personalizados baseados no seu tempo disponível",
+  "versao": "1.0.0",
+  "autor": "Bob AI X",
+  "comandos": [
+    "cronograma",
+    "plano de estudos",
+    "organizar estudos",
+    "montar cronograma",
+    "quando estudar"
+  ]
+}

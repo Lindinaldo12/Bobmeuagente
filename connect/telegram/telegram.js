@@ -1,24 +1,25 @@
-const { Bot } = require("grammy");
-
+const { Bot, session } = require("grammy");
 const config = require("../../config/config");
 const ia = require("../../ia/gerenciador");
 const memoria = require("../../memoria_v2");
 const kernel = require("../../kernel/kernel");
 const status = require("../../dashboard/status");
 const { criarContexto } = require("../../core/contexto");
-
 const auth = require("../../core/auth");
-const authSession = require("../../core/authSession");
 const admin = require("./admin");
 const comandosMemoria = require("./comandosMemoria");
+const comandosAdmin = require("./comandosAdmin");
+const comandosPlugins = require("./comandosPlugins");
+const pluginManager = require("../../core/pluginManager");
+const { processarArquivo } = require("../../ia/leitorArquivos");
 
-// LOG DE CARREGAMENTO
-console.log(" telegram.js carregado com sucesso");
+console.log("✅ telegram.js carregado com sucesso");
 
 function criarBot() {
     const bot = new Bot(config.telegram.token);
 
-    // MIDDLEWARE: Habilita o log bruto de atualizações recebidas
+    bot.use(session({ initial: () => ({}) }));
+
     bot.use(async (ctx, next) => {
         console.log("===== UPDATE RECEBIDO =====");
         console.dir(ctx.update, { depth: null });
@@ -27,129 +28,167 @@ function criarBot() {
 
     admin.registrarAdmin(bot);
     comandosMemoria.registrarComandosMemoria(bot);
+    comandosAdmin.registrarComandosAdmin(bot);
+    comandosPlugins.registrarComandosPlugins(bot);
 
-    // COMANDO START
     bot.command("start", async (ctx) => {
-        let usuario = memoria.carregarUsuario(
-            ctx.from.id,
-            ctx.from.first_name
-        );
-
+        const args = ctx.message.text.split(' ').slice(1);
+        
+        if (args.length > 0 && args[0].startsWith('convite_')) {
+            const token = args[0].replace('convite_', '');
+            
+            if (auth.isAutenticado(ctx.from.id)) {
+                return ctx.reply('✅ Você já tem uma conta!');
+            }
+            
+            const resultado = auth.usarConvite(token, ctx.from.id, ctx.from.first_name);
+            
+            if (resultado.sucesso) {
+                await ctx.reply(`🎉 BEM-VINDO(A) AO BOB AI X!\n\n✅ Sua conta foi criada!\n\n📋 Dados:\nNome: ${ctx.from.first_name}\nSenha: ${resultado.senha}\n\n⚠️ Guarde esta senha!\n\n🏪 Visite a loja: /loja\n📲 Instale plugins: /instalar questoes_concurso`);
+            } else {
+                await ctx.reply(resultado.mensagem);
+            }
+            return;
+        }
+        
+        let usuario = memoria.carregarUsuario(ctx.from.id, ctx.from.first_name);
         memoria.salvarUsuario(usuario);
-
-        await ctx.reply(
-            `Olá, ${usuario.nome}!\n\nBob AI está pronto para ajudar!`
-        );
+        
+        if (auth.isMaster(ctx.from.id)) {
+            await ctx.reply(`👑 Olá MASTER!\n\nBob AI X está pronto!\n\nUse /convite para gerar links.`);
+        } else if (auth.isAutenticado(ctx.from.id)) {
+            await ctx.reply(`✅ Olá, ${usuario.nome}!\n\nUse /loja para ver os plugins disponíveis.`);
+        } else {
+            await ctx.reply(`🔐 Olá!\n\nPeça ao administrador um link de convite.`);
+        }
     });
 
-    // COMANDO STATUS
     bot.command("status", async (ctx) => {
+        if (!auth.isAutenticado(ctx.from.id)) return ctx.reply('🚫 Faça login primeiro: /entrar sua_senha');
         await ctx.reply(status.gerarStatus());
     });
 
-    // COMANDO AJUDA
-    bot.command("ajuda", async (ctx) => {
-        await ctx.reply(`
-🤖 Bob AI X
-
-Posso ajudar com:
-Desenvolvimento de software
- Criar projetos
-🔧 Gerar testes
- Gerar documentação
- Gerenciar notas
-💾 Memorizar informações
- Data e hora
-⚙️ Status do sistema
-
-Basta escrever o que deseja fazer.
-        `);
+    bot.on(":document", async (ctx) => {
+        if (!auth.isAutenticado(ctx.from.id)) return ctx.reply('🚫 Faça login primeiro: /entrar sua_senha');
+        console.log("📎 Documento detectado:", ctx.message.document.file_name);
+        ctx.session.lastDocument = {
+            fileId: ctx.message.document.file_id,
+            fileName: ctx.message.document.file_name,
+            mimeType: ctx.message.document.mime_type
+        };
+        await ctx.reply("📄 Arquivo recebido! O que deseja fazer com ele?");
     });
 
-    // RECEBER MENSAGENS DE TEXTO
+    bot.on(":photo", async (ctx) => {
+        if (!auth.isAutenticado(ctx.from.id)) return ctx.reply('🚫 Faça login primeiro: /entrar sua_senha');
+        console.log("📷 Foto detectada");
+        ctx.session.lastDocument = {
+            fileId: ctx.message.photo[ctx.message.photo.length - 1].file_id,
+            fileName: 'imagem.jpg',
+            mimeType: 'image/jpeg'
+        };
+        await ctx.reply("📷 Imagem recebida! O que deseja fazer com ela?");
+    });
+
     bot.on(":text", async (ctx) => {
         console.log("========================================");
         console.log(" EVENTO DO TELEGRAM DISPARADO");
         console.log("Mensagem:", ctx.message.text);
         console.log("========================================");
 
+        if (!auth.isAutenticado(ctx.from.id)) {
+            return ctx.reply('🚫 Você precisa fazer login primeiro.\n\nUse: /entrar sua_senha');
+        }
+
         try {
-            // 1. Carrega o usuário
-            let usuario = memoria.carregarUsuario(
-                ctx.from.id,
-                ctx.from.first_name
-            );
-
+            let usuario = memoria.carregarUsuario(ctx.from.id, ctx.from.first_name);
             const pergunta = ctx.message.text;
+            const preferencias = auth.obterPreferencias(ctx.from.id);
+            
+            // ⭐ VERIFICAR PLUGINS (SEM MENSAGEM DE CARREGAMENTO)
+            const pluginsInstalados = pluginManager.obterPluginsUsuario(ctx.from.id);
+            const pluginDetectado = pluginManager.detectarPlugin(pergunta, pluginsInstalados);
+            
+            if (pluginDetectado) {
+                console.log(`🧩 Plugin detectado: ${pluginDetectado}`);
+                
+                const contextoPlugin = {
+                    usuario,
+                    preferencias,
+                    historico: memoria.obterHistorico(usuario)
+                };
+                
+                const resultado = await pluginManager.executarPlugin(ctx.from.id, pluginDetectado, pergunta, contextoPlugin);
+                
+                if (resultado.sucesso) {
+                    const resposta = resultado.resultado;
+                    usuario = memoria.adicionarHistorico(usuario, pergunta, resposta);
+                    memoria.salvarUsuario(usuario);
+                    
+                    const LIMITE = 3800;
+                    if (resposta && resposta.length <= LIMITE) {
+                        await ctx.reply(resposta);
+                    } else if (resposta) {
+                        for (let i = 0; i < resposta.length; i += LIMITE) {
+                            await ctx.reply(resposta.substring(i, i + LIMITE));
+                        }
+                    }
+                    return;
+                } else {
+                    await ctx.reply(resultado.mensagem);
+                    return;
+                }
+            }
 
-            // 2. Aprende com a pergunta e salva
+            // PROCESSAMENTO DE PDF
+            if (ctx.session && ctx.session.lastDocument) {
+                const doc = ctx.session.lastDocument;
+                
+                if (doc.mimeType === 'application/pdf' || (doc.fileName && doc.fileName.toLowerCase().endsWith('.pdf'))) {
+                    await ctx.reply("⏳ Processando seu PDF..."); // Aqui faz sentido, pois PDF demora
+                    
+                    try {
+                        const resultado = await processarArquivo(ctx, bot, doc);
+                        if (!resultado.sucesso) return ctx.reply(`❌ Erro: ${resultado.erro}`);
+
+                        const promptComDocumento = `CONTEXTO: Arquivo "${doc.fileName}".\nCONTEÚDO:\n"""\n${resultado.conteudo}\n"""\nSOLICITAÇÃO: ${pergunta}\n\nResponda baseando-se EXCLUSIVAMENTE no conteúdo.`;
+                        ctx.session.lastDocument = null;
+
+                        const contexto = criarContexto({ texto: promptComDocumento, usuario, historico: memoria.obterHistorico(usuario), memoria, ia, telegram: ctx });
+                        const resultadoIA = await kernel.executar(contexto);
+                        const resposta = typeof resultadoIA === "string" ? resultadoIA : resultadoIA?.resposta;
+
+                        usuario = memoria.adicionarHistorico(usuario, pergunta, resposta);
+                        memoria.salvarUsuario(usuario);
+                        await ctx.reply(resposta);
+                        return;
+                    } catch (error) {
+                        console.error("Erro ao processar PDF:", error);
+                        return ctx.reply("❌ Erro ao ler este PDF.");
+                    }
+                }
+            }
+
+            // PROCESSAMENTO NORMAL DE TEXTO
             usuario = memoria.aprenderAutomaticamente(usuario, pergunta);
             memoria.salvarUsuario(usuario);
-
-            // 3. Pega o histórico
             const historico = memoria.obterHistorico(usuario);
 
-            // 4. Cria o contexto completo para o Kernel
-            const contexto = criarContexto({
-                texto: pergunta,
-                usuario,
-                historico,
-                memoria,
-                ia,
-                telegram: ctx
-            });
-
-            // 5. CHAMADA DO KERNEL (VERSÃO TEMPORÁRIA DE DEBUG)
-            // PORTÃO DE SEGURANÇA
-            if (!auth.isMaster(ctx.from.id) && !auth.isAdmin(ctx.from.id) && !auth.isAuthorized(memoria.carregarUsuario(ctx.from.id))) {
-                await ctx.reply(" Acesso negado. Você não tem permissão para usar o Bob AI X.");
-                return;
-            }
+            const contexto = criarContexto({ texto: pergunta, usuario, historico, memoria, ia, telegram: ctx });
             const resultado = await kernel.executar(contexto);
+            const resposta = typeof resultado === "string" ? resultado : resultado?.resposta;
 
-            console.log("TIPO RESULTADO:", typeof resultado);
-            console.dir(resultado, { depth: null });
-
-            const resposta =
-                typeof resultado === "string"
-                    ? resultado
-                    : resultado?.resposta;
-
-            console.log("✅ Resposta gerada pelo Kernel");
-
-            // 6. Salva a conversa no histórico (memoria_v2)
             usuario = memoria.adicionarHistorico(usuario, pergunta, resposta);
             memoria.salvarUsuario(usuario);
 
-            // 7. ✅ ENVIA A RESPOSTA (COM LOG APLICADO PELO TUTORIAL)
-            try {
-                console.log("===== ENVIANDO PARA O TELEGRAM =====");
-                console.log("Resposta:", resposta);
-
-                const LIMITE = 3800;
-
-                if (resposta && resposta.length <= LIMITE) {
-                    // ✅ MODIFICAÇÃO DO TUTORIAL APLICADA AQUI:
-                    const enviada = await ctx.reply(resposta);
-                    
-                    console.log("===== TELEGRAM RESPONDEU =====");
-                    console.dir(enviada, { depth: null });
-                    
-                } else if (resposta) {
-                    for (let i = 0; i < resposta.length; i += LIMITE) {
-                        const enviada = await ctx.reply(
-                            resposta.substring(i, i + LIMITE)
-                        );
-                        console.dir(enviada, { depth: null });
-                    }
+            const LIMITE = 3800;
+            if (resposta && resposta.length <= LIMITE) {
+                await ctx.reply(resposta);
+            } else if (resposta) {
+                for (let i = 0; i < resposta.length; i += LIMITE) {
+                    await ctx.reply(resposta.substring(i, i + LIMITE));
                 }
-
-            } catch (erro) {
-                console.log("===== ERRO AO ENVIAR =====");
-                console.error(erro);
             }
-
-            console.log("✅ Resposta enviada ao Telegram");
 
         } catch (erro) {
             console.error("Erro no processamento:", erro);

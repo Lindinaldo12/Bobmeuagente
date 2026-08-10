@@ -1,18 +1,23 @@
-# Dependências (Nunca suba isso, o Render instala sozinho)
+# Dependências (reinstaláveis com npm install)
 node_modules/
 
-# Variáveis de ambiente (SUAS SENHAS)
+# Arquivos temporários
+temp/
+*.tmp
+
+# Backups locais (muito pesados para o Git)
+backups/
+
+# Variáveis de ambiente (SENHAS - NUNCA subir para o GitHub!)
 .env
-.env.local
-.env.*.local
 
-# Logs e arquivos temporários
+# Logs
 *.log
-npm-debug.log*
 
-# Arquivos de sistema
+# Sistema operacional
 .DS_Store
 Thumbs.db
 
-# Dados locais sensíveis (Descomente a linha abaixo se não quiser subir a memória local)
-# memoria/fatos.json
+# Pasta de conhecimento local (livros espíritas - muito pesados)
+conhecimento/espirita/*.txt
+conhecimento/espirita/*.pdf

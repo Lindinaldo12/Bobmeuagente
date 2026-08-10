@@ -5,7 +5,7 @@
   "administrador": false,
   "bloqueado": false,
   "criadoEm": "2026-08-01T10:21:59.101Z",
-  "ultimaAtividade": "2026-08-05T11:44:28.469Z",
+  "ultimaAtividade": "2026-08-10T16:52:08.798Z",
   "perfil": {
     "nome": "Terapia Lindinaldo",
     "cidade": "",
@@ -37,6 +37,11 @@
       "data": "2026-08-05T11:44:28.539Z",
       "pergunta": "Explique Linux",
       "resposta": "# Linux\n\n## O que é\n\nLinux é um sistema operacional de código aberto criado por Linus Torvalds em 1991.\n\n## Principais características\n\n\n• Gratuito\n\n• Código aberto (Open Source)\n\n• Multiusuário\n\n• Multitarefa\n\n• Seguro\n\n• Estável\n\n## Onde é utilizado\n\n\n• Servidores\n\n• Computadores pessoais\n\n• Android\n\n• Supercomputadores\n\n• Sistemas embarcados\n\n## Distribuições\n\n\n• Ubuntu\n\n• Debian\n\n• Fedora\n\n• Arch Linux\n\n• Rocky Linux\n\n## Kernel\n\nO Kernel Linux é o núcleo do sistema operacional e controla o hardware e os recursos do computador."
+    },
+    {
+      "data": "2026-08-10T16:52:13.858Z",
+      "pergunta": "Muito obrigado meu amigo",
+      "resposta": "De nada! Se precisar de algo mais, estou aqui."
     }
   ]
 }

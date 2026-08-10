@@ -1,0 +1,24 @@
+{
+  "nome": "✍️ Redação Discursiva",
+  "descricao": "Treina redação discursiva e estudos de caso para concursos (texto dissertativo-argumentativo)",
+  "versao": "1.0.0",
+  "autor": "Bob AI X",
+  "comandos": [
+    "redação",
+    "redacao",
+    "discursiva",
+    "estudo de caso",
+    "texto dissertativo",
+    "treinar redação",
+    "tema de redação",
+    "tema de redacao",
+    "escrever redação",
+    "corrigir redação"
+  ],
+  "tipos": [
+    "Texto dissertativo-argumentativo",
+    "Estudo de caso",
+    "Questões discursivas",
+    "Redação oficial"
+  ]
+}

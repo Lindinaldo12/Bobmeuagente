@@ -1,0 +1,34 @@
+{
+  "nome": "📜 Provas Anteriores de Concursos",
+  "descricao": "Questões reais de concursos anteriores (CESPE, FGV, FCC, VUNESP) com gabarito comentado",
+  "versao": "1.0.0",
+  "autor": "Bob AI X",
+  "comandos": [
+    "prova anterior",
+    "questão de concurso anterior",
+    "prova da",
+    "questão da CESPE",
+    "questão da FGV",
+    "questão da FCC",
+    "prova de",
+    "concurso anterior"
+  ],
+  "bancas": [
+    "CESPE/CEBRASPE",
+    "FGV",
+    "FCC",
+    "VUNESP",
+    "IBFC",
+    "CONSULPLAN"
+  ],
+  "orgaos": [
+    "Polícia Federal",
+    "PRF",
+    "Receita Federal",
+    "Tribunais",
+    "Banco do Brasil",
+    "Caixa Econômica",
+    "Petrobras",
+    "Correios"
+  ]
+}
