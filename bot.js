@@ -1,3 +1,4 @@
+const USE_OLLAMA = process.env.USE_OLLAMA !== "false";
 require("dotenv").config();
 
 // Novas dependências para o sistema de log
