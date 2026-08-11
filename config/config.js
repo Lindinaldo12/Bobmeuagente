@@ -6,7 +6,7 @@ module.exports = {
   },
 
   gemini: {
-    apiKey: process.env.GEMINI_API_KEY
+    apiKey: process.env.OPENROUTER_API_KEY
   },
 
   ollama: {

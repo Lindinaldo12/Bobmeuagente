@@ -5,7 +5,7 @@ const { GoogleGenAI } = require("@google/genai");
 async function testar() {
   try {
     const ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY
+      apiKey: process.env.OPENROUTER_API_KEY
     });
 
     const resposta = await ai.models.generateContent({

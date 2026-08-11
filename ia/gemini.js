@@ -6,7 +6,7 @@ let ai = null;
 function conectar() {
     try {
         if (!config.gemini.apiKey) {
-            throw new Error("GEMINI_API_KEY não configurada");
+            throw new Error("OPENROUTER_API_KEY não configurada");
         }
 
         ai = new GoogleGenAI({
@@ -98,7 +98,7 @@ Regras:
             console.dir(erro.response.data, { depth: null });
         }
 
-        return "Desculpe, ocorreu um erro ao consultar o Gemini.";
+        return "Desculpe, ocorreu um erro ao consultar a IA.";
     }
 }
 
