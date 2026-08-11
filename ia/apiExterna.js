@@ -16,10 +16,26 @@ async function chamarAPI(pergunta, contextoUsuario) {
     { role: 'system', content: 'Você é o Bob AI X. Responda de forma direta, curta e precisa, mantendo o contexto da conversa anterior.' }
   ];
 
-  // Se tiver histórico no objeto do usuário, adicionamos as últimas 4 mensagens para dar contexto
+  // Se tiver histórico, formatamos corretamente para garantir 'role' e 'content'
   if (contextoUsuario && contextoUsuario.historico && Array.isArray(contextoUsuario.historico)) {
-    const historicoRecente = contextoUsuario.historico.slice(-4); // Pega as últimas 4 interações
-    messages = messages.concat(historicoRecente);
+    const historicoRecente = contextoUsuario.historico.slice(-4);
+    
+    historicoRecente.forEach(msg => {
+      // Formato 1: Já está no padrão OpenAI
+      if (msg.role && msg.content) {
+        messages.push({ role: msg.role, content: msg.content });
+      } 
+      // Formato 2: Salvo como pergunta/resposta
+      else if (msg.pergunta && msg.resposta) {
+        messages.push({ role: 'user', content: msg.pergunta });
+        messages.push({ role: 'assistant', content: msg.resposta });
+      }
+      // Formato 3: Objeto bruto do Telegram
+      else if (msg.text && msg.from) {
+        const role = msg.from.is_bot ? 'assistant' : 'user';
+        messages.push({ role: role, content: msg.text });
+      }
+    });
   }
 
   // Adiciona a pergunta atual (que já contém os dados da Wikipedia injetados pelo Agente)
