@@ -5,7 +5,7 @@
   "administrador": false,
   "bloqueado": false,
   "criadoEm": "2026-08-09T16:13:15.033Z",
-  "ultimaAtividade": "2026-08-11T01:39:25.311Z",
+  "ultimaAtividade": "2026-08-11T18:50:13.068Z",
   "perfil": {
     "nome": "Luz e 🕊️ Paz",
     "cidade": "",
@@ -21,16 +21,6 @@
   },
   "preferencias": {},
   "historico": [
-    {
-      "data": "2026-08-10T17:31:34.587Z",
-      "pergunta": "questão sesgranrio petrobras difícil",
-      "resposta": "🎯 QUESTÃO ESTILO SESGRANRIO\n\n🏛️ Concurso: Petrobras\n📚 Matéria: Conhecimentos Gerais\n📊 Nível: difícil\n🎓 Banca: SESGRANRIO\n\n━━━━━━━━━━━━━━━━━━━\n\n**Enunciado:**\nUm engenheiro da Petrobras está analisando um projeto de implantação de uma nova plataforma off-shore. O projeto prevê a utilização de um sistema de produção que requer a instalação de 120 tubulações de 100 metros cada, com uma tolerância de ±5% na medição das tubulações. O engenheiro precisa calcular o comprimento total das tubulações, considerando a tolerância máxima. Qual é o comprimento total das tubulações, em metros?\n\nA) 1140\nB) 1200\nC) 1260\nD) 1320\nE) 1380\n\n━━━━━━━━━━━━━━━━━━━\n\n✅ GABARITO: C\n\n📖 COMENTÁRIO DETALHADO:\nA resposta correta é a alternativa C) 1260 metros.\n\n**Explicação:**\nO comprimento total das tubulações sem considerar a tolerância é:\n\\[ 120 \\text{ tubulações} \\times 100 \\text{ metros} = 12000 \\text{ metros} \\]\n\nCom a tolerância máxima de ±5%, o comprimento máximo das tubulações seria:\n\\[ 12000 \\text{ metros} + (12000 \\text{ metros} \\times 5\\%) = 12000 \\text{ metros} + 600 \\text{ metros} = 12600 \\text{ metros} \\]\n\nPortanto, o comprimento total das tubulações, considerando a tolerância máxima, é 1260 metros.\n\n**Por que as outras alternativas estão erradas:**\nA) 1140 metros: Esta alternativa está abaixo do comprimento mínimo permitido.\nB) 1200 metros: Esta alternativa não considera a tolerância máxima.\nD) 1320 metros: Esta alternativa está acima do comprimento máximo permitido.\nE) 1380 metros: Esta alternativa está muito acima do comprimento máximo permitido.\n\n**Base Teórica/LEGAL:**\n- **Matemática Aplicada:** Cálculo de comprimento total com tolerância.\n\n**Pegadinha da SESGRANRIO:**\n- A alternativa B) 1200 metros pode parecer correta à primeira vista, pois é o comprimento sem considerar a tolerância. No entanto, a questão especifica a tolerância máxima de ±5%, que deve ser levada em conta.\n\n💡 DICA PARA QUESTÕES SEMELHANTES:\n- Sempre leia cuidadosamente a questão e verifique se há informações adicionais, como tolerâncias ou condições específicas, que devem ser consideradas no cálculo.\n\n🎯 TÓPICO ESPECÍFICO:\n- Cálculo de comprimento total com tolerância em engenharia."
-    },
-    {
-      "data": "2026-08-10T17:31:49.792Z",
-      "pergunta": "artigos mais importantes da constituição",
-      "resposta": "Artigos importantes da Constituição brasileira incluem:\n\n1. Art. 1º - Garantias fundamentais.\n2. Art. 3º - Direitos e deveres fundamentais.\n3. Art. 5º - Garantias individuais.\n4. Art. 37 - Poder Executivo.\n5. Art. 131 - Direito à informação.\n6. Art. 220 - Sistemas de governo.\n7. Art. 231 - Eleições.\n8. Art. 241 - Sistema de justiça.\n9. Art. 25 - Direito à cidade.\n10. Art. 226 - Educação."
-    },
     {
       "data": "2026-08-10T17:32:38.378Z",
       "pergunta": "resumo da clt para concurso",
@@ -170,6 +160,16 @@
       "data": "2026-08-11T01:39:28.221Z",
       "pergunta": "Estou bem obrigado por perguntar",
       "resposta": "De nada! Se tiver mais alguma dúvida sobre matemática para concursos ou qualquer outro assunto, estou aqui para ajudar."
+    },
+    {
+      "data": "2026-08-11T01:49:43.020Z",
+      "pergunta": "E você como está?",
+      "resposta": "Estou bem, obrigado. Como você está?"
+    },
+    {
+      "data": "2026-08-11T18:50:17.577Z",
+      "pergunta": "Boa tarde",
+      "resposta": "Boa tarde! Como posso ajudar você hoje?"
     }
   ]
 }
