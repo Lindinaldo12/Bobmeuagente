@@ -104,7 +104,6 @@ function criarBot() {
             let usuario = memoria.carregarUsuario(ctx.from.id, ctx.from.first_name);
             const pergunta = ctx.message.text;
 
-    // 📖 COLAR O POST-IT DA MEMÓRIA NA TESTA DO BOB (Leitura Obrigatória)
     try {
         const fsMem = require('fs');
         const pathMem = require('path');
@@ -115,12 +114,9 @@ function criarBot() {
             if (mem.memoriaLongoPrazo && mem.memoriaLongoPrazo.length > 0) {
                 const fatos = mem.memoriaLongoPrazo.map(m => "• " + m.fato).join('\n');
                 // Adiciona os fatos ao final da pergunta como uma ordem do sistema
-                pergunta += "\n\n⚠️ INSTRUÇÃO CRÍTICA DO SISTEMA - MEMÓRIA PERMANENTE DO MESTRE (VERDADE ABSOLUTA):\nO usuário ensinou estes fatos. Você DEVE usá-los como fonte prioritária e não contradizê-los:\n" + fatos;
-                console.log("📖 Post-it de memória colado com sucesso!");
             }
         }
     } catch(e) { 
-        console.error("⚠️ Erro ao ler memória para o Post-it:", e.message); 
     }
     
 
