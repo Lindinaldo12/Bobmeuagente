@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const fetch = require('node-fetch');
 
 async function chamarAPI(pergunta, contextoUsuario) {
@@ -12,8 +14,16 @@ async function chamarAPI(pergunta, contextoUsuario) {
   }
 
   // Prepara as mensagens. Começamos com a instrução do sistema.
-  let messages = [
-    { role: 'system', content: 'Você é o Bob AI X. Responda de forma direta, curta e precisa, mantendo o contexto da conversa anterior.' }
+  
+    // 📜 LER A CONSTITUIÇÃO DO BOB (REGRAS ABSOLUTAS)
+    let regrasPersonais = "";
+    const pathPersonalidade = path.join(__dirname, '../config/personalidade.txt');
+    if (fs.existsSync(pathPersonalidade)) {
+        regrasPersonais = "\n\n🚨 REGRAS ABSOLUTAS DO SISTEMA (OBEDEÇA 100%):\n" + fs.readFileSync(pathPersonalidade, 'utf8');
+    }
+    
+    let messages = [
+    { role: 'system', content: 'Você é o Bob AI X.' + regrasPersonais }
   ];
 
   // Se tiver histórico, formatamos corretamente para garantir 'role' e 'content'

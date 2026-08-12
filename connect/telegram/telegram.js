@@ -104,6 +104,96 @@ function criarBot() {
             let usuario = memoria.carregarUsuario(ctx.from.id, ctx.from.first_name);
             const pergunta = ctx.message.text;
 
+    // 📖 COLAR O POST-IT DA MEMÓRIA NA TESTA DO BOB (Leitura Obrigatória)
+    try {
+        const fsMem = require('fs');
+        const pathMem = require('path');
+        const memPath = pathMem.join(__dirname, '../../memoria/usuarios', ctx.from.id + '.json');
+        
+        if (fsMem.existsSync(memPath)) {
+            const mem = JSON.parse(fsMem.readFileSync(memPath, 'utf8'));
+            if (mem.memoriaLongoPrazo && mem.memoriaLongoPrazo.length > 0) {
+                const fatos = mem.memoriaLongoPrazo.map(m => "• " + m.fato).join('\n');
+                // Adiciona os fatos ao final da pergunta como uma ordem do sistema
+                pergunta += "\n\n⚠️ INSTRUÇÃO CRÍTICA DO SISTEMA - MEMÓRIA PERMANENTE DO MESTRE (VERDADE ABSOLUTA):\nO usuário ensinou estes fatos. Você DEVE usá-los como fonte prioritária e não contradizê-los:\n" + fatos;
+                console.log("📖 Post-it de memória colado com sucesso!");
+            }
+        }
+    } catch(e) { 
+        console.error("⚠️ Erro ao ler memória para o Post-it:", e.message); 
+    }
+    
+
+    // 🧠 GATILHO DE APRENDIZADO EVOLUTIVO
+    const textoLower = ctx.message.text.toLowerCase();
+    const gatilhosAprendizado = ['anote', 'não esqueça', 'nao esqueca', 'lembre-se', 'lembrese', 'salve isso', 'grave isso', 'aprenda'];
+    
+    if (gatilhosAprendizado.some(g => textoLower.includes(g))) {
+        console.log("📝 Gatilho de aprendizado detectado! Gravando na memória permanente...");
+        
+        try {
+            const userId = ctx.from.id.toString();
+            const memoriaPath = require('path').join(__dirname, '../../memoria/usuarios', userId + '.json');
+            
+            // Lê ou cria a memória do usuário
+            let memoria = { historico: [], memoriaLongoPrazo: [] };
+            if (require('fs').existsSync(memoriaPath)) {
+                memoria = JSON.parse(require('fs').readFileSync(memoriaPath, 'utf8'));
+            }
+            
+            // Garante que o array de memória existe
+            if (!Array.isArray(memoria.memoriaLongoPrazo)) memoria.memoriaLongoPrazo = [];
+            
+            // Adiciona o novo fato com data e hora
+            memoria.memoriaLongoPrazo.push({
+                fato: ctx.message.text,
+                aprendido_em: new Date().toISOString(),
+                fonte: 'ensino_direto_do_mestre'
+            });
+            
+            // Salva no disco imediatamente
+            require('fs').writeFileSync(memoriaPath, JSON.stringify(memoria, null, 2));
+            
+            await ctx.reply("✅ *Aprendi e gravei no meu diário permanente!* \n\nVou lembrar disso sempre que precisarmos conversar sobre esse assunto.", { parse_mode: 'Markdown' });
+            return; // ENCERRA AQUI. Não chama o Orquestrador nem a IA.
+        } catch (e) {
+            console.error(" Erro ao salvar memória:", e);
+            await ctx.reply("⚠️ Tive um problema técnico ao anotar no meu diário. Tente novamente!");
+            return;
+        }
+    }
+    
+
+    // 🧠 MEMÓRIA EVOLUTIVA (Comando /lembrar)
+    if (pergunta.toLowerCase().startsWith('/lembrar')) {
+        const novoFato = pergunta.toLowerCase().replace('/lembrar', '').trim();
+        if (novoFato) {
+            console.log("📝 Mestre ensinou algo novo: " + novoFato);
+            try {
+                const fsMem = require('fs');
+                const pathMem = require('path');
+                const userId = ctx.from.id;
+                const memoriaPath = pathMem.join(__dirname, '../../memoria/usuarios', userId + '.json');
+                
+                let memoria = { historico: [], memoriaLongoPrazo: [] };
+                if (fsMem.existsSync(memoriaPath)) {
+                    memoria = JSON.parse(fsMem.readFileSync(memoriaPath, 'utf8'));
+                }
+                
+                if (!memoria.memoriaLongoPrazo) memoria.memoriaLongoPrazo = [];
+                memoria.memoriaLongoPrazo.push({ fato: novoFato, data: new Date().toISOString() });
+                
+                fsMem.writeFileSync(memoriaPath, JSON.stringify(memoria, null, 2));
+                await ctx.reply("✅ *Fato salvo no meu diário permanente!*\\n\\n\"" + novoFato + "\"\\n\\nAgora eu nunca mais vou esquecer isso, Mestre!", { parse_mode: 'Markdown' });
+            } catch (e) {
+                console.error("❌ Erro ao salvar memória:", e);
+                await ctx.reply("❌ Erro ao salvar no diário. Tente de novo!");
+            }
+            return; // Para o bot aqui e não chama o Orquestrador
+        }
+    }
+    
+
     // 🚨 INTERCEPTAÇÃO FORÇADA DE PESQUISA (NÍVEL MÁXIMO - ARQUIVO CORRETO)
     const msgTexto = ctx.message.text.toLowerCase();
     if (msgTexto.includes('/pesquisar') || msgTexto.includes('/web') || msgTexto.includes('dólar') || msgTexto.includes('dolar') || msgTexto.includes('euro') || msgTexto.includes('cotação')) {

@@ -67,9 +67,60 @@
       "data": "2026-08-12T18:24:42.839Z",
       "pergunta": "Sim \nEle assumiu em janeiro desde ano \nNão esqueça",
       "resposta": "Não tenho informações sobre quando o atual presidente dos Estados Unidos assumiu o cargo. Se você tiver alguma outra pergunta ou precisar de ajuda com algo específico, estou aqui para ajudar."
+    },
+    {
+      "data": "2026-08-12T19:28:24.915Z",
+      "pergunta": "Quem é o presidente dos Estados Unidos em 2026? ",
+      "resposta": "Não tenho informações sobre quem será o presidente dos Estados Unidos em 2026. As informações disponíveis são sobre o período de 2017 a 2021, quando Donald Trump foi presidente. Para uma previsão futura, não tenho dados."
+    },
+    {
+      "data": "2026-08-12T19:35:14.417Z",
+      "pergunta": "Quem é o presidente dos Estados Unidos em 2026? ",
+      "resposta": "Não tenho informações sobre quem será o presidente dos Estados Unidos em 2026. As informações disponíveis são sobre o período de 2017 a 2021, quando Donald Trump foi presidente. Para previsões futuras, não tenho dados."
+    },
+    {
+      "data": "2026-08-12T19:37:10.517Z",
+      "pergunta": "Você pode atualizar agora?",
+      "resposta": "Não tenho informações sobre quem será o presidente dos Estados Unidos em 2026. As informações disponíveis são sobre o período de 2017 a 2021, quando Donald Trump foi presidente. Para previsões futuras, não tenho dados."
+    },
+    {
+      "data": "2026-08-12T19:40:32.791Z",
+      "pergunta": "Quem é o presidente dos Estados Unidos em 2026? ",
+      "resposta": "Não tenho informações sobre quem será o presidente dos Estados Unidos em 2026. As informações disponíveis são sobre o presidente em 2021, que era Joe Biden. Para previsões futuras, não tenho dados."
+    },
+    {
+      "data": "2026-08-12T19:48:18.087Z",
+      "pergunta": "Quem é o presidente dos Estados Unidos em 2026? ",
+      "resposta": "Conforme o histórico recente, Perdão Trump é o presidente dos Estados Unidos a partir de janeiro deste ano. Portanto, em 2026, Perdão Trump será o presidente dos Estados Unidos."
+    },
+    {
+      "data": "2026-08-12T19:53:54.473Z",
+      "pergunta": "Quem é o presidente dos Estados Unidos em 2026? ",
+      "resposta": "Conforme o histórico recente, Donald Trump é o presidente dos Estados Unidos a partir de janeiro deste ano. Portanto, em 2026, Donald Trump será o presidente dos Estados Unidos."
+    },
+    {
+      "data": "2026-08-12T19:54:37.326Z",
+      "pergunta": "Anotou na memória permanente?",
+      "resposta": "Conforme a memória permanente do usuário, Donald Trump é o presidente dos Estados Unidos a partir de janeiro deste ano. Portanto, em 2026, Donald Trump será o presidente dos Estados Unidos."
     }
   ],
-  "memoriaLongoPrazo": [],
+  "memoriaLongoPrazo": [
+    {
+      "fato": "Trump é o presidente dos Estados Unidos em 2026. Esta é uma informação atualizada fornecida pelo mestre.",
+      "aprendido_em": "2026-08-12T19:27:29.425Z",
+      "fonte": "atualizacao_direta_pelo_mestre"
+    },
+    {
+      "fato": "Atualize seus dados e informações atual, não esqueça",
+      "aprendido_em": "2026-08-12T19:36:20.260Z",
+      "fonte": "ensino_direto_do_mestre"
+    },
+    {
+      "fato": "Atualize seus dados e informações atual, não esqueça",
+      "aprendido_em": "2026-08-12T19:40:20.406Z",
+      "fonte": "ensino_direto_do_mestre"
+    }
+  ],
   "perfil": {
     "nome": "Luz e 🕊️ Paz Luiz",
     "cidade": "",
@@ -81,5 +132,5 @@
     "interesses": []
   },
   "preferencias": {},
-  "ultimaAtividade": "2026-08-12T18:24:40.275Z"
+  "ultimaAtividade": "2026-08-12T19:54:35.088Z"
 }
