@@ -103,6 +103,24 @@ function criarBot() {
         try {
             let usuario = memoria.carregarUsuario(ctx.from.id, ctx.from.first_name);
             const pergunta = ctx.message.text;
+
+    // 🚨 INTERCEPTAÇÃO FORÇADA DE PESQUISA (NÍVEL MÁXIMO - ARQUIVO CORRETO)
+    const msgTexto = ctx.message.text.toLowerCase();
+    if (msgTexto.includes('/pesquisar') || msgTexto.includes('/web') || msgTexto.includes('dólar') || msgTexto.includes('dolar') || msgTexto.includes('euro') || msgTexto.includes('cotação')) {
+        console.log("🚨 INTERCEPTAÇÃO FORÇADA NO TELEGRAM.JS: Pesquisador assumindo o controle!");
+        try {
+            const pesquisador = require('../../agentes/pesquisador'); // Caminho relativo direto
+            const termo = ctx.message.text.replace(/^\/(pesquisar|web)\s*/i, '').trim();
+            const resposta = await pesquisador.executar(termo, { historico: [] });
+            await ctx.reply(resposta, { parse_mode: 'Markdown' });
+            return; // ENCERRA A EXECUÇÃO AQUI. O ORQUESTRADOR NÃO SERÁ CHAMADO.
+        } catch (e) {
+            console.error("❌ Erro na interceptação:", e);
+            await ctx.reply("Erro técnico ao pesquisar. Tente novamente!");
+            return;
+        }
+    }
+    
             const preferencias = auth.obterPreferencias(ctx.from.id);
             
             // ⭐ VERIFICAR PLUGINS (SEM MENSAGEM DE CARREGAMENTO)
