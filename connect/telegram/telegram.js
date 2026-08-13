@@ -6,12 +6,25 @@ const { criarContexto } = require("../../core/contexto");
 const auth = require("../../core/auth");
 const pesquisador = require("../../agentes/pesquisador");
 
-console.log("✅ telegram.js atualizado com resposta direta em tempo real!");
+console.log("✅ telegram.js atualizado com comando /pesquisar e bypass direto!");
 
 function criarBot() {
   const bot = new Bot(config.telegram.token);
   bot.use(session({ initial: () => ({}) }));
 
+  // COMANDO OFICIAL DE PESQUISA (Resolve o /pesquisar)
+  bot.command("pesquisar", async (ctx) => {
+    if (!auth.isAutenticado(ctx.from.id)) return ctx.reply('🔒 Faça login primeiro.');
+    
+    const termo = ctx.match;
+    if (!termo) return ctx.reply('⚠️ Use: `/pesquisar <sua busca>`', { parse_mode: 'Markdown' });
+
+    await ctx.reply('🔎 Pesquisando na web em tempo real...');
+    const resposta = await pesquisador.executar(termo);
+    await ctx.reply(resposta, { parse_mode: 'Markdown' });
+  });
+
+  // MENSAGENS COMUNS DE TEXTO
   bot.on(":text", async (ctx) => {
     if (!auth.isAutenticado(ctx.from.id)) {
       return ctx.reply('🔒 Você precisa fazer login primeiro.');
@@ -22,28 +35,23 @@ function criarBot() {
       let pergunta = ctx.message.text;
       const textoLower = pergunta.toLowerCase();
 
-      // Lista de gatilhos para tempo real
+      // Interceptação automática por palavras-chave sem precisar usar o comando /
       const termosTempoReal = [
         'dolar', 'dólar', 'euro', 'cotacao', 'cotação', 
         'temperatura', 'clima', 'tempo em', 'hoje', 
-        'quem ganhou', 'resultado', 'último jogo', '/pesquisar', 'pesquise'
+        'quem ganhou', 'resultado do jogo', 'ultimo jogo'
       ];
 
-      // Se for pergunta de tempo real, responde DIRETO sem passar pelo Kernel travado
       if (termosTempoReal.some(t => textoLower.includes(t))) {
-        console.log("🌐 PROCESSANDO CONSULTA EM TEMPO REAL...");
-        const termoLimpo = pergunta.replace('/pesquisar', '').trim();
-        const respostaDireta = await pesquisador.executar(termoLimpo || pergunta);
-        
+        console.log("🌐 DADOS EM TEMPO REAL DETECTADOS NA MENSAGEM!");
+        const respostaDireta = await pesquisador.executar(pergunta);
         if (respostaDireta) {
-          usuario = memoria.adicionarHistorico(usuario, pergunta, respostaDireta);
-          memoria.salvarUsuario(usuario);
           await ctx.reply(respostaDireta, { parse_mode: 'Markdown' });
-          return; // Finaliza aqui para a IA não interferir!
+          return; // Para aqui e NÃO passa para o Ollama/Kernel!
         }
       }
 
-      // PROCESSAMENTO NORMAL PARA OUTROS ASSUNTOS (Kernel/IA)
+      // PROCESSAMENTO NORMAL VIA OLLAMA/KERNEL (Para bate-papo comum)
       usuario = memoria.aprenderAutomaticamente(usuario, pergunta);
       memoria.salvarUsuario(usuario);
 

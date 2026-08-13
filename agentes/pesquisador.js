@@ -7,9 +7,9 @@ class AgentePesquisador {
     this.tavilyApiKey = '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';
   }
 
-  async buscarCotacaoMoedas() {
+  buscarCotacaoMoedas() {
     return new Promise((resolve) => {
-      https.get('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL', { timeout: 5000 }, (res) => {
+      https.get('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL', { timeout: 8000 }, (res) => {
         let body = '';
         res.on('data', chunk => body += chunk);
         res.on('end', () => {
@@ -20,32 +20,39 @@ class AgentePesquisador {
             if (json.EURBRL) resposta += `💶 *Euro:* R$ ${parseFloat(json.EURBRL.bid).toFixed(2)}\n`;
             resolve(resposta);
           } catch (e) {
-            resolve('⚠️ Erro ao processar cotação.');
+            resolve('⚠️ Não foi possível obter a cotação no momento.');
           }
         });
-      }).on('error', () => resolve('⚠️ Falha na conexão com a API de moedas.'));
+      }).on('error', () => resolve('⚠️ Erro ao conectar no serviço de cotações.'));
     });
   }
 
   async buscarNaWebTavily(query) {
     try {
-      const res = await axios.post('https://api.tavily.com/search', {
+      // Limpa comandos do texto da busca
+      const termoLimpo = query.replace(/^\/pesquisar\s*/i, '').replace(/pesquise/i, '').trim();
+
+      const response = await axios.post('https://api.tavily.com/search', {
         api_key: this.tavilyApiKey,
-        query: query,
+        query: termoLimpo,
         search_depth: 'basic',
         include_answer: true,
-        max_results: 2
-      }, { timeout: 8000 });
+        max_results: 3
+      }, { timeout: 10000 });
 
-      if (res.data && res.data.answer) {
-        return `🌐 *INFORMAÇÃO DA WEB EM TEMPO REAL:*\n\n${res.data.answer}`;
-      } else if (res.data && res.data.results && res.data.results.length > 0) {
-        return `🌐 *INFORMAÇÃO DA WEB:*\n\n${res.data.results[0].content}`;
+      if (response.data && response.data.answer) {
+        return `🌐 *PESQUISA WEB EM TEMPO REAL*\n\n${response.data.answer}`;
+      } else if (response.data && response.data.results && response.data.results.length > 0) {
+        let txt = `🌐 *RESULTADOS DA BUSCA:*\n\n`;
+        response.data.results.forEach((r, i) => {
+          txt += `*${i+1}. ${r.title}*\n${r.content.substring(0, 150)}...\n\n`;
+        });
+        return txt;
       }
-      return '⚠️ Nenhuma informação encontrada na web para esse termo.';
-    } catch (err) {
-      console.error('Erro Tavily:', err.message);
-      return `⚠️ Erro ao buscar na web: ${err.message}`;
+      return '⚠️ Não foram encontrados resultados atualizados para esta busca.';
+    } catch (error) {
+      console.error('Erro Tavily:', error.message);
+      return '⚠️ Ocorreu uma falha ao pesquisar na web no momento.';
     }
   }
 
