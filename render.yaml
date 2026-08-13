@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: Bob AI X
+    env: node
+    buildCommand: npm install
+    startCommand: node bot.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
