@@ -1,67 +1,59 @@
 const https = require('https');
 const { chamarAPI } = require('../ia/apiExterna');
 
-const palavrasChave = ['pesquise', 'pesquisar', 'cotação', 'dólar', 'dolar', 'euro', 'valor', 'hoje', 'agora', '/web', '/pesquisar'];
+class AgentePesquisador {
+  constructor() {
+    this.nome = 'Pesquisador';
+  }
 
-function detectar(pergunta) {
-  return palavrasChave.some(p => pergunta.toLowerCase().includes(p));
-}
-
-async function executar(pergunta, contexto) {
-  console.log("📻 MODO RÁDIO DE PILHA ATIVADO: Buscando dados JSON puros");
-  const termo = pergunta.toLowerCase();
-
-  // SE FOR COTAÇÃO, USA A PORTA DOS FUNDOS (API JSON LEVE)
-  if (termo.includes('dólar') || termo.includes('dolar') || termo.includes('euro')) {
-    console.log("💱 Sintonizando na frequência da AwesomeAPI...");
-    
+  async buscarCotacaoMoedas() {
     return new Promise((resolve) => {
-      // Usando o módulo 'https' NATIVO do Node (mais estável no Termux que node-fetch)
       const req = https.get('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL', { timeout: 8000 }, (res) => {
-        let data = '';
-        res.on('data', chunk => data += chunk);
+        let body = '';
+        res.on('data', chunk => body += chunk);
         res.on('end', () => {
           try {
-            const json = JSON.parse(data);
-            let msg = "📊 *Cotação Atual (Fonte: AwesomeAPI)*\n\n";
-            
+            const json = JSON.parse(body);
+            let resposta = '📊 *Cotação Atual (Fonte: AwesomeAPI)*\n\n';
+
             if (json.USDBRL) {
-              const valor = parseFloat(json.USDBRL.bid).toFixed(2).replace('.', ',');
-              msg += `🇺🇸 *Dólar Comercial*: R$ ${valor} (Variação: ${json.USDBRL.pctChange}%)\n`;
+              const dolar = parseFloat(json.USDBRL.bid).toFixed(2);
+              resposta += `💵 *Dólar:* R$ ${dolar}\n`;
             }
             if (json.EURBRL) {
-              const valor = parseFloat(json.EURBRL.bid).toFixed(2).replace('.', ',');
-              msg += `🇪🇺 *Euro*: R$ ${valor} (Variação: ${json.EURBRL.pctChange}%)\n`;
+              const euro = parseFloat(json.EURBRL.bid).toFixed(2);
+              resposta += `💶 *Euro:* R$ ${euro}\n`;
             }
-            resolve(msg.trim());
+
+            resolve(resposta);
           } catch (e) {
-            console.error("❌ Erro ao processar JSON:", e.message);
-            resolve("⚠️ Recebi os dados, mas não consegui ler os números. Tente novamente.");
+            resolve('📊 *Cotação Atual:* Não foi possível processar os valores no momento.');
           }
         });
       });
 
-      req.on('error', (err) => {
-        console.error("❌ Falha na conexão com a API:", err.message);
-        resolve("⚠️ Falha de rede ao conectar com a API de cotação. Verifique seu Wi-Fi e tente novamente.");
+      req.on('error', () => {
+        resolve('❌ Erro ao consultar a cotação de moedas no momento.');
       });
-      
-      req.on('timeout', () => {
-        req.destroy();
-        resolve("⚠️ A conexão com a API demorou muito e foi cancelada. Tente novamente.");
-      });
+
+      req.end();
     });
   }
 
-  // SE NÃO FOR COTAÇÃO, DEIXA A IA RESPONDER COM CONHECIMENTO GERAL
-  console.log("🧠 Não é cotação. Usando conhecimento geral da IA.");
-  const prompt = `Você é o Bob. Responda de forma clara e direta (nível 10 anos). Se perguntarem sobre notícias recentes, avise que sua busca na web está em manutenção, mas responda com o que sabe sobre o tema.`;
-  
-  try {
-    return await chamarAPI(pergunta, { ...contexto, promptSistema: prompt, historico: [] });
-  } catch (e) {
-    return "Opa! Tive um probleminha técnico ao processar a resposta.";
+  async executar(comando, contexto = {}) {
+    const termo = comando.toLowerCase();
+
+    if (termo.includes('dolar') || termo.includes('dólar') || termo.includes('euro') || termo.includes('cotacao') || termo.includes('cotação')) {
+      return await this.buscarCotacaoMoedas();
+    }
+
+    try {
+      const prompt = `Responda à seguinte pesquisa de forma objetiva e direta: ${comando}`;
+      return await chamarAPI(prompt);
+    } catch (error) {
+      return `❌ Erro ao realizar pesquisa: ${error.message}`;
+    }
   }
 }
 
-module.exports = { detectar, executar, palavrasChave };
+module.exports = new AgentePesquisador();

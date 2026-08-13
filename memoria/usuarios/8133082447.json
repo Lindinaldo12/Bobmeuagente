@@ -9,11 +9,6 @@
   },
   "historico": [
     {
-      "data": "2026-08-12T18:22:52.168Z",
-      "pergunta": "Então eu vou te falar, o prédio é Trump \nAnite e nunca mais esqueça",
-      "resposta": "Entendido. O prédio que você mencionou é do Trump. Qualquer pergunta relacionada a este prédio, você pode me informar e eu me lembrarei."
-    },
-    {
       "data": "2026-08-12T18:23:39.723Z",
       "pergunta": "Perdão Trump é o novo presidente do estado unidos",
       "resposta": "Não, Donald Trump não é o presidente dos Estados Unidos. Ele foi presidente no período de 2017 a 2021."
@@ -157,6 +152,11 @@
       "data": "2026-08-12T23:05:06.710Z",
       "pergunta": "/desenhar um cérebro brilhante estudando com livros ",
       "resposta": "Não consigo desenhar, mas posso descrever como seria um cérebro brilhante estudando com livros:\n\nUm cérebro brilhante está sentado em frente a uma mesa cheia de livros abertos. Ele está concentrado, lendo e anotando informações importantes nos cadernos. O cérebro está iluminado por uma luz suave, destacando sua determinação e foco. 🧠📚📝💡"
+    },
+    {
+      "data": "2026-08-12T23:55:17.793Z",
+      "pergunta": "/menu",
+      "resposta": "Olá! Aqui está o menu:\n\n1. **Matemática**\n2. **Biologia**\n3. **Informações Gerais**\n4. **Ajuda com Textos**\n\nQual área você gostaria de explorar? 🌟"
     }
   ],
   "memoriaLongoPrazo": [
@@ -187,5 +187,5 @@
     "interesses": []
   },
   "preferencias": {},
-  "ultimaAtividade": "2026-08-12T23:05:03.842Z"
+  "ultimaAtividade": "2026-08-12T23:55:14.720Z"
 }
