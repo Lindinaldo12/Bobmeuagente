@@ -39,23 +39,21 @@ class AgentePesquisador {
     });
   }
 
-  async executar(comando, contexto = {}) {
+  async executar(comando) {
     const termo = (comando || '').toLowerCase();
 
-    // Intercepta qualquer termo relacionado a moedas/cotação
     if (
       termo.includes('dolar') || 
       termo.includes('dólar') || 
       termo.includes('euro') || 
       termo.includes('cotacao') || 
       termo.includes('cotação') ||
-      termo.includes('moeda') ||
-      termo.includes('valor')
+      termo.includes('moeda')
     ) {
       return await this.buscarCotacaoMoedas();
     }
 
-    return await this.buscarCotacaoMoedas(); // Fallback seguro para requisições do pesquisador
+    return await this.buscarCotacaoMoedas();
   }
 }
 
