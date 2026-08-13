@@ -15,8 +15,8 @@ class AgentePesquisador {
         res.on('end', () => {
           try {
             const json = JSON.parse(body);
-            let dados = 'DADOS DA COTAÇÃO ATUAL (AwesomeAPI):\n';
-            if (json.USDBRL) dados += `- Dólar: R$ ${parseFloat(json.USDBRL.bid).toFixed(2)}\n`;
+            let dados = 'DADOS ATUAIS DA COTAÇÃO DE MOEDAS:\n';
+            if (json.USDBRL) dados += `- Dólar Americano: R$ ${parseFloat(json.USDBRL.bid).toFixed(2)}\n`;
             if (json.EURBRL) dados += `- Euro: R$ ${parseFloat(json.EURBRL.bid).toFixed(2)}\n`;
             resolve(dados);
           } catch (e) {
@@ -40,7 +40,7 @@ class AgentePesquisador {
       }, { timeout: 10000 });
 
       if (response.data && response.data.answer) {
-        return `DADOS DA PESQUISA WEB EM TEMPO REAL (Tavily):\n${response.data.answer}`;
+        return `DADOS EM TEMPO REAL OBTIDOS NA WEB (TAVILY):\n${response.data.answer}`;
       }
       return null;
     } catch (error) {
