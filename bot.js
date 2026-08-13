@@ -1,3 +1,6 @@
+const { carregarEnv } = require('./config/loadEnv');
+carregarEnv();
+
 const USE_OLLAMA = process.env.USE_OLLAMA !== "false";
 require("dotenv").config();
 

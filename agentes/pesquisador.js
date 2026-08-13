@@ -1,55 +1,191 @@
-const axios = require('axios');
-const https = require('https');
+const axios = require("axios");
+const https = require("https");
 
 class AgentePesquisador {
-  constructor() {
-    this.tavilyApiKey = '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';
-  }
 
-  async buscarNaWeb(query) {
-    try {
-      const termoLimpo = query.replace(/^\/pesquisar\s*/i, '').trim();
-      const response = await axios.post('https://api.tavily.com/search', {
-        api_key: this.tavilyApiKey,
-        query: termoLimpo,
-        search_depth: 'basic',
-        include_answer: true,
-        max_results: 3
-      }, { timeout: 8000 });
-
-      if (response.data && response.data.answer) {
-        return `🌐 *Informação Atualizada (Web):*\n\n${response.data.answer}`;
-      }
-      return null;
-    } catch (e) {
-      console.error("Erro na busca Tavily:", e.message);
-      return null;
+    constructor() {
+        this.tavilyApiKey = process.env.TAVILY_API_KEY || "";
     }
-  }
 
-  async buscarCotacao() {
-    return new Promise((resolve) => {
-      https.get('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL', { timeout: 5000 }, (res) => {
-        let body = '';
-        res.on('data', c => body += c);
-        res.on('end', () => {
-          try {
-            const j = JSON.parse(body);
-            resolve(`📊 *Cotação Atual:*\n💵 Dólar: R$ ${parseFloat(j.USDBRL.bid).toFixed(2)}\n💶 Euro: R$ ${parseFloat(j.EURBRL.bid).toFixed(2)}`);
-          } catch { resolve(null); }
+    async buscarNaWeb(query) {
+
+        if (!this.tavilyApiKey) {
+            console.error("❌ TAVILY_API_KEY não configurada.");
+            return null;
+        }
+
+        try {
+
+            const termoLimpo = String(query)
+                .replace(/^\/pesquisar\s*/i, "")
+                .trim();
+
+            if (!termoLimpo) {
+                return null;
+            }
+
+            console.log("");
+            console.log("🌐 ===== PESQUISA WEB =====");
+            console.log("Consulta:", termoLimpo);
+
+            const response = await axios.post(
+                "https://api.tavily.com/search",
+                {
+                    query: termoLimpo,
+                    search_depth: "basic",
+                    topic: "general",
+                    include_answer: true,
+                    max_results: 5
+                },
+                {
+                    headers: {
+                        "Authorization":
+                            `Bearer ${this.tavilyApiKey}`,
+                        "Content-Type":
+                            "application/json"
+                    },
+                    timeout: 10000
+                }
+            );
+
+            const dados = response.data;
+
+            console.log(
+                "Resultados:",
+                dados?.results?.length || 0
+            );
+
+            if (!dados) {
+                return null;
+            }
+
+            const resposta = [];
+
+            if (dados.answer) {
+                resposta.push(
+                    `🌐 **Informação atualizada da Web**\n\n${dados.answer}`
+                );
+            }
+
+            if (Array.isArray(dados.results)) {
+
+                resposta.push("\n### Fontes encontradas");
+
+                dados.results
+                    .slice(0, 5)
+                    .forEach((resultado, index) => {
+
+                        resposta.push(
+                            `\n${index + 1}. **${resultado.title || "Sem título"}**\n` +
+                            `${resultado.content || ""}\n` +
+                            `Fonte: ${resultado.url || "URL indisponível"}`
+                        );
+
+                    });
+            }
+
+            if (resposta.length === 0) {
+                return null;
+            }
+
+            console.log("✅ Pesquisa Web concluída.");
+            console.log("============================");
+            console.log("");
+
+            return resposta.join("\n");
+
+        } catch (erro) {
+
+            console.error(
+                "❌ Erro na busca Tavily:",
+                erro.response?.data || erro.message
+            );
+
+            return null;
+        }
+    }
+
+    async buscarCotacao() {
+
+        return new Promise((resolve) => {
+
+            https.get(
+                "https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL",
+                {
+                    timeout: 5000
+                },
+                (res) => {
+
+                    let body = "";
+
+                    res.on("data", chunk => {
+                        body += chunk;
+                    });
+
+                    res.on("end", () => {
+
+                        try {
+
+                            const dados = JSON.parse(body);
+
+                            const dolar =
+                                parseFloat(
+                                    dados.USDBRL.bid
+                                ).toFixed(2);
+
+                            const euro =
+                                parseFloat(
+                                    dados.EURBRL.bid
+                                ).toFixed(2);
+
+                            resolve(
+                                `📊 **Cotação Atual**\n\n` +
+                                `💵 Dólar: R$ ${dolar}\n` +
+                                `💶 Euro: R$ ${euro}`
+                            );
+
+                        } catch (erro) {
+
+                            console.error(
+                                "Erro ao processar cotação:",
+                                erro.message
+                            );
+
+                            resolve(null);
+                        }
+                    });
+
+                }
+            ).on("error", () => {
+
+                resolve(null);
+
+            });
         });
-      }).on('error', () => resolve(null));
-    });
-  }
-
-  async executar(comando) {
-    const t = comando.toLowerCase();
-    if (t.includes('dolar') || t.includes('dólar') || t.includes('euro') || t.includes('cotacao')) {
-      const cot = await this.buscarCotacao();
-      if (cot) return cot;
     }
-    return await this.buscarNaWeb(comando);
-  }
+
+    async executar(comando) {
+
+        const texto = String(comando).toLowerCase();
+
+        if (
+            texto.includes("dólar") ||
+            texto.includes("dolar") ||
+            texto.includes("euro") ||
+            texto.includes("cotação") ||
+            texto.includes("cotacao")
+        ) {
+
+            const cotacao =
+                await this.buscarCotacao();
+
+            if (cotacao) {
+                return cotacao;
+            }
+        }
+
+        return await this.buscarNaWeb(comando);
+    }
 }
 
 module.exports = new AgentePesquisador();
