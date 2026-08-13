@@ -1,12 +1,11 @@
 const https = require('https');
-const { chamarAPI } = require('../ia/apiExterna');
 
 class AgentePesquisador {
   constructor() {
     this.nome = 'Pesquisador';
   }
 
-  async buscarCotacaoMoedas() {
+  buscarCotacaoMoedas() {
     return new Promise((resolve) => {
       const req = https.get('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL', { timeout: 8000 }, (res) => {
         let body = '';
@@ -41,18 +40,22 @@ class AgentePesquisador {
   }
 
   async executar(comando, contexto = {}) {
-    const termo = comando.toLowerCase();
+    const termo = (comando || '').toLowerCase();
 
-    if (termo.includes('dolar') || termo.includes('dólar') || termo.includes('euro') || termo.includes('cotacao') || termo.includes('cotação')) {
+    // Intercepta qualquer termo relacionado a moedas/cotação
+    if (
+      termo.includes('dolar') || 
+      termo.includes('dólar') || 
+      termo.includes('euro') || 
+      termo.includes('cotacao') || 
+      termo.includes('cotação') ||
+      termo.includes('moeda') ||
+      termo.includes('valor')
+    ) {
       return await this.buscarCotacaoMoedas();
     }
 
-    try {
-      const prompt = `Responda à seguinte pesquisa de forma objetiva e direta: ${comando}`;
-      return await chamarAPI(prompt);
-    } catch (error) {
-      return `❌ Erro ao realizar pesquisa: ${error.message}`;
-    }
+    return await this.buscarCotacaoMoedas(); // Fallback seguro para requisições do pesquisador
   }
 }
 
