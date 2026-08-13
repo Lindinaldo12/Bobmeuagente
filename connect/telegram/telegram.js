@@ -1,28 +1,16 @@
 const { Bot, session } = require("grammy");
 const config = require("../../config/config");
-const ia = require("../../ia/gerenciador");
 const memoria = require("../../memoria_v2");
 const kernel = require("../../kernel/kernel");
-const status = require("../../dashboard/status");
 const { criarContexto } = require("../../core/contexto");
 const auth = require("../../core/auth");
-const admin = require("./admin");
-const comandosMemoria = require("./comandosMemoria");
-const comandosAdmin = require("./comandosAdmin");
-const comandosPlugins = require("./comandosPlugins");
-const pluginManager = require("../../core/pluginManager");
+const pesquisador = require("../../agentes/pesquisador");
 
-console.log("✅ telegram.js atualizado");
+console.log("✅ telegram.js atualizado com injeção de contexto web!");
 
 function criarBot() {
   const bot = new Bot(config.telegram.token);
-
   bot.use(session({ initial: () => ({}) }));
-
-  admin.registrarAdmin(bot);
-  comandosMemoria.registrarComandosMemoria(bot);
-  comandosAdmin.registrarComandosAdmin(bot);
-  comandosPlugins.registrarComandosPlugins(bot);
 
   bot.on(":text", async (ctx) => {
     if (!auth.isAutenticado(ctx.from.id)) {
@@ -31,37 +19,33 @@ function criarBot() {
 
     try {
       let usuario = memoria.carregarUsuario(ctx.from.id, ctx.from.first_name);
-      const pergunta = ctx.message.text;
+      let pergunta = ctx.message.text;
       const textoLower = pergunta.toLowerCase();
 
-      // GATILHO 1: Cotações e Pesquisas em Tempo Real
+      // Gatilhos para acionar a busca na web
       const termosTempoReal = [
         'dolar', 'dólar', 'euro', 'cotacao', 'cotação', 
         'temperatura', 'clima', 'tempo em', 'hoje', 
         'quem ganhou', 'resultado', 'último jogo', '/pesquisar', 'pesquise'
       ];
 
+      let dadosWeb = null;
       if (termosTempoReal.some(t => textoLower.includes(t))) {
-        console.log("🚨 CHAMANDO AGENTE PESQUISADOR...");
-        try {
-          const pesquisador = require('../../agentes/pesquisador');
-          const termoLimpo = pergunta.replace('/pesquisar', '').trim();
-          const respostaWeb = await pesquisador.executar(termoLimpo || pergunta);
-          
-          if (respostaWeb) {
-            await ctx.reply(respostaWeb, { parse_mode: 'Markdown' });
-            return;
-          }
-        } catch (e) {
-          console.error("Erro no pesquisador:", e);
-        }
+        console.log("🌐 Buscando dados na web em tempo real...");
+        const termoLimpo = pergunta.replace('/pesquisar', '').trim();
+        dadosWeb = await pesquisador.executar(termoLimpo || pergunta);
       }
 
-      // PROCESSAMENTO PADRÃO DE TEXTO (Kernel/IA)
+      // Se houver dados da web, injetamos no prompt da IA
+      let promptFinal = pergunta;
+      if (dadosWeb) {
+        promptFinal = `[INFORMAÇÃO EM TEMPO REAL OBTIDA DA WEB]:\n${dadosWeb}\n\n[PERGUNTA DO USUÁRIO]:\n${pergunta}\n\nInstrução: Responda à pergunta do usuário usando com precisão os dados em tempo real fornecidos acima.`;
+      }
+
       usuario = memoria.aprenderAutomaticamente(usuario, pergunta);
       memoria.salvarUsuario(usuario);
 
-      const contexto = criarContexto({ texto: pergunta });
+      const contexto = criarContexto({ texto: promptFinal });
       const resultado = await kernel.executar(contexto);
       const resposta = typeof resultado === "string" ? resultado : resultado.texto;
 
