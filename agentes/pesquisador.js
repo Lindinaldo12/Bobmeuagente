@@ -29,20 +29,20 @@ class AgentePesquisador {
 
             resolve(resposta);
           } catch (e) {
-            resolve('📊 *Cotação Atual:* Não foi possível processar os valores no momento.');
+            resolve('📊 *Cotação Atual:* Não foi possível processar os valores.');
           }
         });
       });
 
       req.on('error', () => {
-        resolve('❌ Erro ao consultar a cotação de moedas no momento.');
+        resolve('❌ Erro ao consultar a cotação no momento.');
       });
 
       req.end();
     });
   }
 
-  // 2. Pesquisa Web em Tempo Real com Tavily API
+  // 2. Pesquisa Web Geral via Tavily
   async buscarNaWebTavily(query) {
     try {
       const response = await axios.post('https://api.tavily.com/search', {
@@ -56,26 +56,21 @@ class AgentePesquisador {
       const data = response.data;
 
       if (data && data.answer) {
-        let resposta = `🔎 *Pesquisa Web (Tavily AI):*\n\n${data.answer}\n\n*Fontes encontradas:*`;
-        if (data.results && data.results.length > 0) {
-          data.results.forEach(res => {
-            resposta += `\n• [${res.title}](${res.url})`;
-          });
-        }
+        let resposta = `🔎 *Pesquisa em Tempo Real:*\n\n${data.answer}`;
         return resposta;
       }
 
       if (data && data.results && data.results.length > 0) {
-        let resposta = `🔎 *Resultados da busca para "${query}":*\n\n`;
+        let resposta = `🔎 *Resultados da pesquisa na Web:*\n\n`;
         data.results.forEach((res, index) => {
-          resposta += `*${index + 1}. ${res.title}*\n${res.content.substring(0, 200)}...\n🔗 ${res.url}\n\n`;
+          resposta += `*${index + 1}. ${res.title}*\n${res.content.substring(0, 180)}...\n\n`;
         });
         return resposta;
       }
 
       return null;
     } catch (error) {
-      console.error('Erro na busca Tavily:', error.message);
+      console.error('Erro Tavily:', error.message);
       return null;
     }
   }
@@ -83,25 +78,18 @@ class AgentePesquisador {
   async executar(comando) {
     const termo = (comando || '').toLowerCase().trim();
 
-    // Verificação de Cotações
-    if (
-      termo.includes('dolar') || 
-      termo.includes('dólar') || 
-      termo.includes('euro') || 
-      termo.includes('cotacao') || 
-      termo.includes('cotação')
-    ) {
+    // Se for cotação
+    if (termo.includes('dolar') || termo.includes('dólar') || termo.includes('euro') || termo.includes('cotacao') || termo.includes('cotação')) {
       return await this.buscarCotacaoMoedas();
     }
 
-    // Pesquisa Web Real com Tavily
-    const resultadoWeb = await this.buscarNaWebTavily(comando);
-    if (resultadoWeb) {
-      return resultadoWeb;
+    // Para qualquer outra pesquisa em tempo real
+    const resultadoTavily = await this.buscarNaWebTavily(comando);
+    if (resultadoTavily) {
+      return resultadoTavily;
     }
 
-    // Fallback de segurança para cotações se não achar nada na web
-    return await this.buscarCotacaoMoedas();
+    return '⚠️ Não encontrei resultados atualizados na web para essa busca no momento.';
   }
 }
 
