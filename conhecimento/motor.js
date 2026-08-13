@@ -1,7 +1,6 @@
 const fs = require("fs");
 const path = require("path");
 
-// Lista de palavras que não são relevantes para busca
 const STOPWORDS = [
     "que",
     "como",
@@ -11,7 +10,6 @@ const STOPWORDS = [
     "uma",
     "das",
     "dos",
-    "das",
     "este",
     "esta",
     "isso",
@@ -24,62 +22,158 @@ const STOPWORDS = [
     "defina",
     "mostrar",
     "mostre",
-    "fale"
+    "fale",
+    "analise",
+    "analisei"
 ];
 
-// ✅ NOVA FUNÇÃO: Normaliza texto (remove acentos, pontuação, deixa minúsculo)
+
 function normalizar(texto) {
-    return texto
+
+    return String(texto || "")
         .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')  // Remove acentos
-        .replace(/[^\w\s]/g, '')           // Remove pontuação
-        .replace(/\s+/g, ' ')              // Remove espaços extras
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^\w\s]/g, " ")
+        .replace(/\s+/g, " ")
         .trim();
 }
 
-function buscar(pergunta) {
-    // Processa a pergunta em palavras-chave
-    const palavras = normalizar(pergunta)
+
+function extrairPalavras(pergunta) {
+
+    return normalizar(pergunta)
         .split(" ")
         .filter(p =>
             p.length > 2 &&
             !STOPWORDS.includes(p)
         );
+}
+
+
+function detectarContexto(pergunta) {
+
+    const texto = normalizar(pergunta);
+
+    const contexto = {
+        programacao: false,
+        javascript: false,
+        nodejs: false,
+        linux: false
+    };
+
+    if (
+        texto.includes("codigo") ||
+        texto.includes("programacao") ||
+        texto.includes("programar") ||
+        texto.includes("funcao") ||
+        texto.includes("variavel")
+    ) {
+        contexto.programacao = true;
+    }
+
+    if (
+        texto.includes("javascript") ||
+        texto.includes("js")
+    ) {
+        contexto.javascript = true;
+        contexto.programacao = true;
+    }
+
+    if (
+        texto.includes("nodejs") ||
+        texto.includes("node")
+    ) {
+        contexto.nodejs = true;
+        contexto.programacao = true;
+    }
+
+    if (
+        texto.includes("linux") ||
+        texto.includes("kernel")
+    ) {
+        contexto.linux = true;
+    }
+
+    return contexto;
+}
+
+
+function buscar(pergunta) {
+
+    const palavras =
+        extrairPalavras(pergunta);
+
+    const contexto =
+        detectarContexto(pergunta);
 
     const resultados = [];
-    pesquisar(__dirname, palavras, resultados);
 
-    // Ordena por pontuação (maior primeiro)
-    resultados.sort((a, b) => b.pontos - a.pontos);
+    pesquisar(
+        __dirname,
+        palavras,
+        contexto,
+        resultados
+    );
 
-    // ✅ Remove documentos sem relevância
-    const relevantes = resultados.filter(r => r.pontos >= 15);
+    resultados.sort(
+        (a, b) => b.pontos - a.pontos
+    );
 
-    // ✅ LOG: Mostra a pontuação de cada documento
-    console.log("===== RESULTADOS DA BUSCA =====");
+    console.log(
+        "===== RESULTADOS DA BUSCA ====="
+    );
+
     for (const r of resultados) {
+
         console.log(
             r.nome,
             "->",
             r.pontos
         );
     }
-    console.log("===============================");
 
-    // ✅ Retorna no máximo 3 documentos
-    return relevantes.slice(0, 3);
+    console.log(
+        "==============================="
+    );
+
+    /*
+     * Somente documentos com pontuação mínima.
+     */
+
+    return resultados
+        .filter(r => r.pontos >= 10)
+        .slice(0, 3);
 }
 
-function pesquisar(diretorio, palavras, resultados) {
-    const itens = fs.readdirSync(diretorio);
+
+function pesquisar(
+    diretorio,
+    palavras,
+    contexto,
+    resultados
+) {
+
+    const itens =
+        fs.readdirSync(diretorio);
 
     for (const item of itens) {
-        const caminho = path.join(diretorio, item);
-        const stat = fs.statSync(caminho);
+
+        const caminho =
+            path.join(diretorio, item);
+
+        const stat =
+            fs.statSync(caminho);
 
         if (stat.isDirectory()) {
-            pesquisar(caminho, palavras, resultados);
+
+            pesquisar(
+                caminho,
+                palavras,
+                contexto,
+                resultados
+            );
+
             continue;
         }
 
@@ -87,36 +181,89 @@ function pesquisar(diretorio, palavras, resultados) {
             continue;
         }
 
-        const conteudo = fs.readFileSync(caminho, "utf8");
-        const conteudoNormalizado = normalizar(conteudo);
-        
+        const conteudo =
+            fs.readFileSync(
+                caminho,
+                "utf8"
+            );
+
+        const conteudoNormalizado =
+            normalizar(conteudo);
+
+        const nome =
+            normalizar(item);
+
+        const palavrasDocumento =
+            conteudoNormalizado.split(/\s+/);
+
         let pontos = 0;
-        const nome = normalizar(item);
 
-        // ✅ MODIFICAÇÃO APLICADA: Busca por palavras inteiras
-        const palavrasDocumento = conteudoNormalizado.split(/\s+/);
-
-        // Busca por cada palavra-chave
         for (const palavra of palavras) {
-            if (nome.includes(palavra)) {
+
+            if (
+                nome
+                    .split(/\s+/)
+                    .includes(palavra)
+            ) {
+
                 console.log(
                     `[NOME] ${item} encontrou "${palavra}"`
                 );
-                pontos += 20;
+
+                pontos += 8;
             }
 
-            // ✅ AGORA USA includes() no array de palavras
-            if (palavrasDocumento.includes(palavra)) {
+            if (
+                palavrasDocumento.includes(palavra)
+            ) {
+
                 console.log(
-                    `[MATCH] ${item} encontrou a palavra "${palavra}"`
+                    `[MATCH] ${item} encontrou "${palavra}"`
                 );
-                pontos += 5;
+
+                pontos += 10;
             }
         }
 
+        /*
+         * Reforço contextual.
+         *
+         * Isso impede que um documento genérico
+         * de Linux domine uma pergunta claramente
+         * relacionada a JavaScript.
+         */
+
+        if (
+            contexto.javascript &&
+            (
+                nome.includes("javascript") ||
+                nome.includes("js")
+            )
+        ) {
+
+            pontos += 25;
+        }
+
+        if (
+            contexto.nodejs &&
+            nome.includes("node")
+        ) {
+
+            pontos += 25;
+        }
+
+        if (
+            contexto.linux &&
+            nome.includes("linux")
+        ) {
+
+            pontos += 25;
+        }
+
         if (pontos > 0) {
+
             resultados.push({
-                nome: item,
+                nome,
                 caminho,
                 conteudo,
                 pontos
@@ -124,6 +271,7 @@ function pesquisar(diretorio, palavras, resultados) {
         }
     }
 }
+
 
 module.exports = {
     buscar
