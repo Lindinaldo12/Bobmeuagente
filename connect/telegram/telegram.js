@@ -6,25 +6,23 @@ const { criarContexto } = require("../../core/contexto");
 const auth = require("../../core/auth");
 const pesquisador = require("../../agentes/pesquisador");
 
-console.log("✅ telegram.js atualizado com comando /pesquisar e bypass direto!");
+console.log("✅ telegram.js configurado sem travas!");
 
 function criarBot() {
   const bot = new Bot(config.telegram.token);
   bot.use(session({ initial: () => ({}) }));
 
-  // COMANDO OFICIAL DE PESQUISA (Resolve o /pesquisar)
+  // Trata o comando /pesquisar
   bot.command("pesquisar", async (ctx) => {
-    if (!auth.isAutenticado(ctx.from.id)) return ctx.reply('🔒 Faça login primeiro.');
+    const busca = ctx.match;
+    if (!busca) return ctx.reply("⚠️ Digite o que deseja pesquisar. Ex: `/pesquisar temperatura em sao paulo`", { parse_mode: "Markdown" });
     
-    const termo = ctx.match;
-    if (!termo) return ctx.reply('⚠️ Use: `/pesquisar <sua busca>`', { parse_mode: 'Markdown' });
-
-    await ctx.reply('🔎 Pesquisando na web em tempo real...');
-    const resposta = await pesquisador.executar(termo);
-    await ctx.reply(resposta, { parse_mode: 'Markdown' });
+    await ctx.reply("🔍 Pesquisando...");
+    const res = await pesquisador.executar(busca);
+    if (res) return ctx.reply(res, { parse_mode: "Markdown" });
+    return ctx.reply("❌ Não encontrei resultados para essa busca.");
   });
 
-  // MENSAGENS COMUNS DE TEXTO
   bot.on(":text", async (ctx) => {
     if (!auth.isAutenticado(ctx.from.id)) {
       return ctx.reply('🔒 Você precisa fazer login primeiro.');
@@ -35,37 +33,34 @@ function criarBot() {
       let pergunta = ctx.message.text;
       const textoLower = pergunta.toLowerCase();
 
-      // Interceptação automática por palavras-chave sem precisar usar o comando /
-      const termosTempoReal = [
-        'dolar', 'dólar', 'euro', 'cotacao', 'cotação', 
-        'temperatura', 'clima', 'tempo em', 'hoje', 
-        'quem ganhou', 'resultado do jogo', 'ultimo jogo'
-      ];
-
-      if (termosTempoReal.some(t => textoLower.includes(t))) {
-        console.log("🌐 DADOS EM TEMPO REAL DETECTADOS NA MENSAGEM!");
-        const respostaDireta = await pesquisador.executar(pergunta);
-        if (respostaDireta) {
-          await ctx.reply(respostaDireta, { parse_mode: 'Markdown' });
-          return; // Para aqui e NÃO passa para o Ollama/Kernel!
+      // Gatilhos de Busca em Tempo Real
+      const gatilhos = ['temperatura', 'clima', 'tempo em', 'dolar', 'dólar', 'euro', 'cotacao', 'cotação', 'ultimo jogo', 'quem ganhou'];
+      
+      if (gatilhos.some(g => textoLower.includes(g))) {
+        console.log("🌐 Acionando agente pesquisador...");
+        const resWeb = await pesquisador.executar(pergunta);
+        if (resWeb) {
+          await ctx.reply(resWeb, { parse_mode: "Markdown" });
+          return; // Encerra aqui para evitar respostas engessadas do Kernel
         }
       }
 
-      // PROCESSAMENTO NORMAL VIA OLLAMA/KERNEL (Para bate-papo comum)
-      usuario = memoria.aprenderAutomaticamente(usuario, pergunta);
-      memoria.salvarUsuario(usuario);
-
+      // Processamento Normal do Kernel
       const contexto = criarContexto({ texto: pergunta });
-      const resultado = await kernel.executar(contexto);
-      const resposta = typeof resultado === "string" ? resultado : resultado.texto;
-
-      usuario = memoria.adicionarHistorico(usuario, pergunta, resposta);
-      memoria.salvarUsuario(usuario);
+      let resposta = "Desculpe, tive um problema ao processar sua resposta.";
+      
+      try {
+        const resultado = await kernel.executar(contexto);
+        resposta = typeof resultado === "string" ? resultado : (resultado.texto || resposta);
+      } catch (errKernel) {
+        console.error("Erro no Kernel/Ollama:", errKernel.message);
+        resposta = "⚠️ O módulo de inteligência offline (Ollama) está indisponível no servidor Render no momento.";
+      }
 
       await ctx.reply(resposta);
 
     } catch (erro) {
-      console.error("Erro no processamento:", erro);
+      console.error("Erro geral no Telegram:", erro);
       await ctx.reply("Ocorreu um erro ao processar sua mensagem.");
     }
   });
