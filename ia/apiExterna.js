@@ -1,107 +1,218 @@
-const fs = require('fs');
-const path = require('path');
-const fetch = require('node-fetch');
+const fs = require("fs");
+const path = require("path");
 
-async function chamarAPI(pergunta, contextoUsuario) {
-  console.log("🌐 Conectando à OpenRouter...");
-  
-  const apiKey = process.env.API_KEY ? process.env.API_KEY.trim() : '';
-  const modelo = process.env.MODEL_NAME || 'qwen/qwen-2.5-7b-instruct';
-  const url = process.env.API_URL || 'https://openrouter.ai/api/v1';
-  
-  if (!apiKey || apiKey.length < 20) {
-    return "Erro: API_KEY inválida ou ausente no .env";
-  }
+async function chamarAPI(pergunta, contextoUsuario = {}) {
+    console.log("🌐 Conectando à OpenRouter...");
 
-  // Prepara as mensagens. Começamos com a instrução do sistema.
-  
-    // 📜 LER A CONSTITUIÇÃO DO BOB (REGRAS ABSOLUTAS)
+    const apiKey = String(process.env.API_KEY || "").trim();
+
+    const modelo =
+        process.env.MODEL_NAME ||
+        "qwen/qwen-2.5-7b-instruct";
+
+    const url =
+        process.env.API_URL ||
+        "https://openrouter.ai/api/v1";
+
+    if (!apiKey || apiKey.length < 20) {
+        return "Erro: API_KEY inválida ou ausente no .env";
+    }
+
     let regrasPersonais = "";
-    const pathPersonalidade = path.join(__dirname, '../config/personalidade.txt');
+
+    const pathPersonalidade = path.join(
+        __dirname,
+        "../config/personalidade.txt"
+    );
+
     if (fs.existsSync(pathPersonalidade)) {
-        regrasPersonais = "\n\n🚨 REGRAS ABSOLUTAS DO SISTEMA (OBEDEÇA 100%):\n" + fs.readFileSync(pathPersonalidade, 'utf8');
+        regrasPersonais =
+            "\n\nREGRAS DO SISTEMA DO BOB:\n" +
+            fs.readFileSync(
+                pathPersonalidade,
+                "utf8"
+            );
     }
-    
-    let messages = [
-    { role: 'system', content: 'Você é o Bob AI X.' + regrasPersonais }
-  ];
 
-  // Se tiver histórico, formatamos corretamente para garantir 'role' e 'content'
-  if (contextoUsuario && contextoUsuario.historico && Array.isArray(contextoUsuario.historico)) {
-    const historicoRecente = contextoUsuario.historico.slice(-4);
-    
-    historicoRecente.forEach(msg => {
-      // Formato 1: Já está no padrão OpenAI
-      if (msg.role && msg.content) {
-        messages.push({ role: msg.role, content: msg.content });
-      } 
-      // Formato 2: Salvo como pergunta/resposta
-      else if (msg.pergunta && msg.resposta) {
-        messages.push({ role: 'user', content: msg.pergunta });
-        messages.push({ role: 'assistant', content: msg.resposta });
-      }
-      // Formato 3: Objeto bruto do Telegram
-      else if (msg.text && msg.from) {
-        const role = msg.from.is_bot ? 'assistant' : 'user';
-        messages.push({ role: role, content: msg.text });
-      }
+    const messages = [
+        {
+            role: "system",
+            content:
+                "Você é o Bob AI X." +
+                regrasPersonais
+        }
+    ];
+
+    if (
+        contextoUsuario?.dadosWeb &&
+        String(contextoUsuario.dadosWeb).trim()
+    ) {
+        messages.push({
+            role: "system",
+            content:
+                "DADOS ATUALIZADOS DA INTERNET:\n\n" +
+                String(contextoUsuario.dadosWeb) +
+                "\n\n" +
+                "Use esses dados como fonte principal. " +
+                "Não invente informações. " +
+                "Responda em português do Brasil."
+        });
+    }
+
+    if (
+        Array.isArray(contextoUsuario?.historico)
+    ) {
+        for (
+            const msg of contextoUsuario.historico.slice(-4)
+        ) {
+
+            if (msg.role && msg.content) {
+
+                messages.push({
+                    role: msg.role,
+                    content: String(msg.content)
+                });
+
+            } else if (
+                msg.pergunta &&
+                msg.resposta
+            ) {
+
+                messages.push({
+                    role: "user",
+                    content: String(msg.pergunta)
+                });
+
+                messages.push({
+                    role: "assistant",
+                    content: String(msg.resposta)
+                });
+            }
+        }
+    }
+
+    messages.push({
+        role: "user",
+        content: String(pergunta || "")
     });
-  }
 
-  // Adiciona a pergunta atual (que já contém os dados da Wikipedia injetados pelo Agente)
-  messages.push({ role: 'user', content: pergunta });
-
-  let tentativas = 0;
-  const maxTentativas = 2;
-
-  while (tentativas < maxTentativas) {
     try {
-      console.log(`📡 Enviando requisição (Tentativa ${tentativas + 1}/${maxTentativas})...`);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      const response = await fetch(url + '/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': 'https://github.com/Lindinaldo12/Bobmeuagente',
-          'X-Title': 'Bob AI X',
-          'Connection': 'close'
-        },
-        body: JSON.stringify({
-          model: modelo,
-          messages: messages, // <-- AQUI ESTÁ A MÁGICA: Enviamos o histórico!
-          temperature: 0.3
-        }),
-        signal: controller.signal
-      });
+        console.log("📡 Enviando requisição para OpenRouter...");
+        console.log("🧠 Modelo:", modelo);
 
-      clearTimeout(timeoutId);
-      const data = await response.json();
+        const controller = new AbortController();
 
-      if (!response.ok) {
-        console.error("❌ Erro da API:", data);
-        return `Erro na IA: ${data.error?.message || 'Tente novamente'}`;
-      }
+        const timeout = setTimeout(
+            () => controller.abort(),
+            30000
+        );
 
-      if (data.choices && data.choices[0] && data.choices[0].message) {
-        return data.choices[0].message.content;
-      } else {
-        throw new Error("Formato de resposta inesperado");
-      }
+        const response = await fetch(
+            url + "/chat/completions",
+            {
+                method: "POST",
 
-    } catch (error) {
-      tentativas++;
-      if (tentativas >= maxTentativas) {
-        console.error("❌ Falha após múltiplas tentativas:", error.message);
-        return "Problema de conexão com a IA. Verifique sua internet e tente novamente.";
-      }
-      console.log("⚠️ A conexão caiu. Tentando novamente em 1 segundo...");
-      await new Promise(resolve => setTimeout(resolve, 1000));
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "HTTP-Referer":
+                        "https://github.com/Lindinaldo12/Bobmeuagente",
+                    "X-Title": "Bob AI X"
+                },
+
+                body: JSON.stringify({
+                    model: modelo,
+                    messages,
+                    temperature: 0.3,
+                    max_tokens: 1000
+                }),
+
+                signal: controller.signal
+            }
+        );
+
+        clearTimeout(timeout);
+
+        console.log(
+            "📡 HTTP:",
+            response.status,
+            response.statusText
+        );
+
+        const textoResposta =
+            await response.text();
+
+        if (!textoResposta) {
+            return "Erro na IA: OpenRouter retornou resposta vazia.";
+        }
+
+        let data;
+
+        try {
+            data = JSON.parse(textoResposta);
+        } catch {
+            console.error(
+                "❌ Resposta não-JSON:",
+                textoResposta.substring(0, 500)
+            );
+
+            return "Erro na IA: resposta inválida da OpenRouter.";
+        }
+
+        if (!response.ok) {
+
+            console.error(
+                "❌ Erro OpenRouter:",
+                JSON.stringify(data, null, 2)
+            );
+
+            return (
+                "Erro na IA: " +
+                (
+                    data?.error?.message ||
+                    `HTTP ${response.status}`
+                )
+            );
+        }
+
+        const resposta =
+            data?.choices?.[0]?.message?.content;
+
+        if (!resposta) {
+            console.error(
+                "❌ Resposta inesperada:",
+                JSON.stringify(data, null, 2)
+            );
+
+            return "Erro na IA: nenhuma resposta recebida.";
+        }
+
+        console.log(
+            "✅ OpenRouter respondeu corretamente."
+        );
+
+        return resposta.trim();
+
+    } catch (erro) {
+
+        console.error(
+            "❌ Erro de conexão OpenRouter:",
+            erro.message
+        );
+
+        if (erro.name === "AbortError") {
+            return "Erro na IA: tempo limite excedido.";
+        }
+
+        return (
+            "Problema de conexão com a OpenRouter: " +
+            erro.message
+        );
     }
-  }
 }
 
-module.exports = { chamarAPI };
+module.exports = {
+    chamarAPI
+};

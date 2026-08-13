@@ -1,4 +1,3 @@
-// Carrega as variáveis de ambiente do .env
 require("dotenv").config({
   path: require("path").join(__dirname, "../.env")
 });
@@ -11,7 +10,10 @@ class AgentePesquisador {
     this.tavilyApiKey = process.env.TAVILY_API_KEY || "";
   }
 
-  // 🌐 BUSCA NA WEB (Tavily)
+  // ==========================================
+  // 🌐 PESQUISA NA WEB — TAVILY
+  // ==========================================
+
   async buscarNaWeb(query) {
     if (!this.tavilyApiKey) {
       console.error("❌ TAVILY_API_KEY não configurada!");
@@ -19,107 +21,309 @@ class AgentePesquisador {
     }
 
     try {
-      const termoLimpo = String(query)
+      const termoOriginal = String(query || "")
         .replace(/^\/pesquisar\s*/i, "")
         .trim();
 
-      if (!termoLimpo) return null;
+      if (!termoOriginal) {
+        return null;
+      }
+
+      // ==========================================
+      // 🔎 MELHORIA DA CONSULTA
+      // ==========================================
+
+      const textoNormalizado = termoOriginal
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+
+      const termosAtuais = [
+        "agora",
+        "atual",
+        "atualmente",
+        "hoje",
+        "neste momento",
+        "nesse momento",
+        "tempo",
+        "temperatura",
+        "cotacao",
+        "cotação",
+        "preco",
+        "preço",
+        "valor",
+        "noticia",
+        "notícia"
+      ];
+
+      const perguntaAtual = termosAtuais.some(
+        termo => textoNormalizado.includes(termo)
+      );
+
+      let termoBusca = termoOriginal;
+
+      if (perguntaAtual) {
+        termoBusca += " agora atual hoje";
+      }
 
       console.log("🌐 ===== PESQUISA WEB =====");
-      console.log("Consulta:", termoLimpo);
+      console.log("Consulta original:", termoOriginal);
+      console.log("Consulta enviada:", termoBusca);
+
+      // ==========================================
+      // 🌐 TAVILY
+      // ==========================================
 
       const response = await axios.post(
         "https://api.tavily.com/search",
         {
-          query: termoLimpo,
-          search_depth: "basic",
+          query: termoBusca,
+
+          search_depth: perguntaAtual
+            ? "advanced"
+            : "basic",
+
           topic: "general",
+
           include_answer: true,
-          max_results: 5
+
+          max_results: 5,
+
+          include_raw_content: false
         },
         {
           headers: {
             "Authorization": `Bearer ${this.tavilyApiKey}`,
             "Content-Type": "application/json"
           },
-          timeout: 10000
+
+          timeout: 15000
         }
       );
 
       const dados = response.data;
-      console.log("Resultados:", dados?.results?.length || 0);
 
-      if (!dados) return null;
+      const resultados =
+        Array.isArray(dados?.results)
+          ? dados.results
+          : [];
+
+      console.log(
+        "Resultados:",
+        resultados.length
+      );
+
+      if (!dados) {
+        return null;
+      }
+
+      // ==========================================
+      // 📦 MONTAGEM DOS DADOS
+      // ==========================================
 
       const resposta = [];
 
-      if (dados.answer) {
-        resposta.push(`🌐 **Informação atualizada da Web**\n\n${dados.answer}`);
+      resposta.push(
+        "🌐 **DADOS ATUALIZADOS DA INTERNET**"
+      );
+
+      resposta.push(
+        `\n🔎 Consulta realizada: ${termoOriginal}`
+      );
+
+      // ==========================================
+      // ⚠️ IMPORTANTE
+      // FONTES VÊM ANTES DO RESUMO DO TAVILY
+      // ==========================================
+
+      if (resultados.length > 0) {
+
+        resposta.push(
+          "\n\n### FONTES DA PESQUISA"
+        );
+
+        resultados.slice(0, 5).forEach(
+          (resultado, index) => {
+
+            const titulo =
+              resultado?.title ||
+              "Sem título";
+
+            const conteudo =
+              resultado?.content ||
+              "Sem conteúdo disponível.";
+
+            const url =
+              resultado?.url ||
+              "URL desconhecida";
+
+            resposta.push(
+              `\n${index + 1}. **${titulo}**\n` +
+              `Conteúdo: ${conteudo}\n` +
+              `Fonte: ${url}`
+            );
+          }
+        );
       }
 
-      if (Array.isArray(dados.results)) {
-        resposta.push("\n### Fontes encontradas:");
-        dados.results.slice(0, 5).forEach((resultado, index) => {
-          resposta.push(
-            `\n${index + 1}. **${resultado.title || "Sem título"}**\n` +
-            `${resultado.content || ""}\n` +
-            `Fonte: ${resultado.url || "URL desconhecida"}`
-          );
-        });
+      // ==========================================
+      // 🧠 RESUMO DO TAVILY
+      // ==========================================
+
+      if (
+        dados.answer &&
+        String(dados.answer).trim()
+      ) {
+
+        resposta.push(
+          "\n\n### RESUMO AUTOMÁTICO DA PESQUISA"
+        );
+
+        resposta.push(
+          String(dados.answer).trim()
+        );
+
+        resposta.push(
+          "\n⚠️ Este resumo é auxiliar. " +
+          "Quando houver divergência, priorize " +
+          "informações explicitamente identificadas " +
+          "nas fontes como atuais/agora."
+        );
       }
 
-      if (resposta.length === 0) return null;
+      if (resposta.length <= 2) {
+        return null;
+      }
 
-      console.log("✅ Pesquisa Web concluída.");
-      console.log("============================");
+      console.log(
+        "✅ Pesquisa Web concluída."
+      );
+
+      console.log(
+        "📚 Fontes preservadas:",
+        resultados.length
+      );
+
+      console.log(
+        "🧠 Resumo Tavily:",
+        dados.answer
+          ? "SIM"
+          : "NÃO"
+      );
+
+      console.log(
+        "============================"
+      );
 
       return resposta.join("\n");
 
     } catch (erro) {
-      console.error("❌ Erro na busca Tavily:", erro.response?.data || erro.message);
+
+      console.error(
+        "❌ Erro na busca Tavily:",
+        erro.response?.data ||
+        erro.message
+      );
+
       return null;
     }
   }
 
-  //  COTAÇÃO DE MOEDAS (AwesomeAPI)
+  // ==========================================
+  // 💰 COTAÇÃO DE MOEDAS
+  // ==========================================
+
   async buscarCotacao() {
+
     return new Promise((resolve) => {
+
       https.get(
         "https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL",
         { timeout: 5000 },
-        (res) => {
-          let body = "";
-          res.on("data", chunk => { body += chunk; });
-          res.on("end", () => {
-            try {
-              const dados = JSON.parse(body);
-              const dolar = parseFloat(dados.USDBRL.bid).toFixed(2);
-              const euro = parseFloat(dados.EURBRL.bid).toFixed(2);
-              const variacaoDolar = dados.USDBRL.pctChange;
-              const variacaoEuro = dados.EURBRL.pctChange;
 
-              resolve(
-                `📊 **Cotação Atual** (Fonte: AwesomeAPI)\n\n` +
-                `💵 *Dólar:* R$ ${dolar} (Variação: ${variacaoDolar}%)\n` +
-                `💶 *Euro:* R$ ${euro} (Variação: ${variacaoEuro}%)`
-              );
-            } catch (erro) {
-              console.error("Erro ao processar cotação:", erro.message);
-              resolve(null);
+        (res) => {
+
+          let body = "";
+
+          res.on(
+            "data",
+            chunk => {
+              body += chunk;
             }
-          });
+          );
+
+          res.on(
+            "end",
+            () => {
+
+              try {
+
+                const dados =
+                  JSON.parse(body);
+
+                const dolar =
+                  parseFloat(
+                    dados.USDBRL.bid
+                  ).toFixed(2);
+
+                const euro =
+                  parseFloat(
+                    dados.EURBRL.bid
+                  ).toFixed(2);
+
+                const variacaoDolar =
+                  dados.USDBRL.pctChange;
+
+                const variacaoEuro =
+                  dados.EURBRL.pctChange;
+
+                resolve(
+                  `📊 **Cotação Atual** ` +
+                  `(Fonte: AwesomeAPI)\n\n` +
+
+                  `💵 *Dólar:* R$ ${dolar} ` +
+                  `(Variação: ${variacaoDolar}%)\n` +
+
+                  `💶 *Euro:* R$ ${euro} ` +
+                  `(Variação: ${variacaoEuro}%)`
+                );
+
+              } catch (erro) {
+
+                console.error(
+                  "Erro ao processar cotação:",
+                  erro.message
+                );
+
+                resolve(null);
+              }
+            }
+          );
+
         }
-      ).on("error", () => {
-        resolve(null);
-      });
+      ).on(
+        "error",
+        () => {
+          resolve(null);
+        }
+      );
     });
   }
 
-  // 🎯 EXECUTAR (Roteador principal)
-  async executar(comando) {
-    const texto = String(comando).toLowerCase();
+  // ==========================================
+  // 🎯 EXECUTAR
+  // ==========================================
 
-    // Se for cotação, usa AwesomeAPI (rápido e gratuito)
+  async executar(comando) {
+
+    const texto =
+      String(comando || "")
+        .toLowerCase();
+
+    // ==========================================
+    // 💰 COTAÇÃO
+    // ==========================================
+
     if (
       texto.includes("dólar") ||
       texto.includes("dolar") ||
@@ -127,11 +331,19 @@ class AgentePesquisador {
       texto.includes("cotação") ||
       texto.includes("cotacao")
     ) {
-      const cotacao = await this.buscarCotacao();
-      if (cotacao) return cotacao;
+
+      const cotacao =
+        await this.buscarCotacao();
+
+      if (cotacao) {
+        return cotacao;
+      }
     }
 
-    // Para qualquer outra coisa, usa Tavily
+    // ==========================================
+    // 🌐 WEB
+    // ==========================================
+
     return await this.buscarNaWeb(comando);
   }
 }

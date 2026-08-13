@@ -1,60 +1,197 @@
-const axios = require('axios');
-const CONSTITUICAO_BOB = require('../config/constituição');
-const pesquisador = require('../agentes/pesquisador');
-
-// Pega a chave da variável de ambiente (Seguro!)
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
-
-if (!GROQ_API_KEY) {
-  console.error("❌ ERRO CRÍTICO: Chave GROQ_API_KEY não encontrada!");
-}
+const memoria = require("../memoria_v4/gerenciador");
+const planner = require("../planner/planner");
+const conhecimento = require("../conhecimento/gerenciador");
+const orquestrador = require("../orquestrador/orquestrador");
+const responseBuilder = require("../core/responseBuilder");
+const memoriaContexto = require("../memoria/contexto");
+const validadorResposta = require("../core/validadorResposta");
+const detectorAlucinacao = require("../core/detectorAlucinacao");
+const autoavaliador = require("../core/autoavaliador");
 
 async function executar(contexto) {
-  try {
-    const mensagem = typeof contexto === 'string' ? contexto : (contexto.texto || '');
-    const textoLower = mensagem.toLowerCase();
 
-    let dadosTempoReal = "";
-
-    // 1. Verifica se precisa buscar dados em tempo real
-    const termosBusca = ['temperatura', 'clima', 'tempo em', 'dolar', 'dólar', 'euro', 'cotacao', 'cotação', 'ultimo jogo', 'resultado'];
-    if (termosBusca.some(t => textoLower.includes(t))) {
-      console.log("🌐 Buscando dados atualizados para a IA...");
-      const resultadoWeb = await pesquisador.executar(mensagem);
-      if (resultadoWeb) {
-        dadosTempoReal = `\n\n[DADOS ATUALIZADOS DA WEB EM TEMPO REAL]:\n${resultadoWeb}`;
-      }
-    }
-
-    // 2. Monta o Prompt com a Constituição + Dados Reais
-    const promptSistema = `${CONSTITUICAO_BOB}${dadosTempoReal}`;
-
-    // 3. Chamada direta para a Groq (Llama 3.1-8b-instant)
-    const response = await axios.post(
-      'https://api.groq.com/openai/v1/chat/completions',
-      {
-        model: 'llama-3.1-8b-instant',
-        messages: [
-          { role: 'system', content: promptSistema },
-          { role: 'user', content: mensagem }
-        ],
-        temperature: 0.5
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${GROQ_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 12000
-      }
+    const idUsuario = String(
+        contexto.usuario?.id ||
+        contexto.usuarioId ||
+        "anonimo"
     );
 
-    return response.data.choices[0].message.content;
+    contexto.memoria = memoria.carregar(idUsuario);
+    contexto.usuarioMemoria = contexto.memoria;
 
-  } catch (error) {
-    console.error("Erro na execução da IA:", error.response ? error.response.data : error.message);
-    return "🤖 Desculpe, Lindinaldo! Tive uma falha de conexão na minha inteligência principal. Podemos tentar novamente?";
-  }
+    const ultimoContexto =
+        memoriaContexto.obter(
+            contexto.usuario?.id ||
+            contexto.usuarioId
+        );
+
+    const ultimaPergunta =
+        ultimoContexto?.pergunta || "";
+
+    let textoProcessado = contexto.texto;
+
+    if (
+        ultimaPergunta &&
+        /^(resuma|resumo|explique|continue|detalhe|compare|faça um resumo)/i
+            .test(contexto.texto)
+    ) {
+
+        textoProcessado =
+            `Pergunta anterior:
+${ultimaPergunta}
+
+Nova solicitação:
+${contexto.texto}`;
+
+        contexto.texto = textoProcessado;
+    }
+
+    contexto.usuarioMemoria.ultimaMensagem =
+        contexto.texto;
+
+    console.log("");
+    console.log("========================================");
+    console.log("🌐 DADOS WEB RECEBIDOS PELO KERNEL");
+
+    if (contexto.dadosWeb) {
+
+        console.log("✅ Dados Web disponíveis.");
+        console.log("========================================");
+
+    } else {
+
+        console.log("ℹ️ Nenhum dado Web recebido.");
+        console.log("========================================");
+    }
+
+    contexto.conhecimento =
+        conhecimento.consultar(contexto.texto);
+
+    console.log("");
+    console.log("===== CONHECIMENTO DO KERNEL =====");
+
+    console.dir(
+        contexto.conhecimento,
+        { depth: null }
+    );
+
+    console.log("==================================");
+
+    contexto.plano =
+        planner.criarPlano(contexto.texto);
+
+    console.log(
+        ">>> Entrando no ORQUESTRADOR"
+    );
+
+    let resposta =
+        await orquestrador.processar(contexto);
+
+    console.log(
+        "<<< Saindo do ORQUESTRADOR"
+    );
+
+    if (resposta.status === "ia") {
+
+        let perguntaParaIA = contexto.texto;
+
+        if (contexto.dadosWeb) {
+
+            perguntaParaIA = `
+PERGUNTA ORIGINAL:
+${contexto.texto}
+
+DADOS ATUALIZADOS DA INTERNET:
+${contexto.dadosWeb}
+
+INSTRUÇÕES:
+- Responda diretamente à pergunta original.
+- Use os dados da Internet acima.
+- Não diga que não possui acesso à Internet.
+- Não invente dados.
+- Se os dados tiverem fontes, utilize-as na resposta.
+`;
+        }
+
+        resposta.resposta =
+            await contexto.ia.perguntar(
+                perguntaParaIA,
+                contexto.historico,
+                contexto.usuario
+            );
+    }
+
+    let respostaFinal =
+        responseBuilder.construir(
+            resposta,
+            contexto
+        );
+
+    // ==========================================
+    // VALIDAÇÃO FINAL
+    // ==========================================
+    // Quando existe Web, a Base de Conhecimento
+    // local NÃO deve interferir na resposta.
+    //
+    // Web ativa  -> validação sem Base local
+    // Web inativa -> validação normal com Base local
+    const conhecimentoParaValidacao =
+        contexto.dadosWeb
+            ? ""
+            : (contexto.conhecimento?.conhecimento || "");
+
+    respostaFinal =
+        validadorResposta.validar(
+            respostaFinal,
+            conhecimentoParaValidacao
+        );
+
+    const verificacao =
+        detectorAlucinacao.verificar(
+            respostaFinal,
+            conhecimentoParaValidacao
+        );
+
+    respostaFinal =
+        verificacao.resposta;
+
+    const avaliacao =
+        autoavaliador.avaliar(
+            respostaFinal
+        );
+
+    if (!avaliacao.aprovada) {
+
+        console.log(
+            "===== AUTOAVALIADOR ====="
+        );
+
+        console.log(
+            avaliacao.problemas
+        );
+
+        console.log(
+            "========================="
+        );
+    }
+
+    memoriaContexto.salvar(
+        contexto.usuario?.id ||
+        contexto.usuarioId,
+        {
+            pergunta: contexto.texto,
+            resposta: respostaFinal
+        }
+    );
+
+    memoria.salvar(
+        idUsuario,
+        contexto.usuarioMemoria
+    );
+
+    return respostaFinal;
 }
 
-module.exports = { executar };
+module.exports = {
+    executar
+};

@@ -1,55 +1,208 @@
 const { Bot, session } = require("grammy");
-const config = require("../../config/config");
-const memoria = require("../../memoria_v2");
-const auth = require("../../core/auth");
-const pesquisador = require("../../agentes/pesquisador");
 
-console.log("✅ telegram.js configurado com respostas diretas!");
+const config = require("../../config/config");
+const auth = require("../../core/auth");
+const detectorWeb = require("../../core/detectorWeb");
+const pesquisador = require("../../agentes/pesquisador");
+const kernel = require("../../kernel/kernel");
+
+console.log("✅ telegram.js integrado ao Kernel e Web!");
 
 function criarBot() {
-  const bot = new Bot(config.telegram.token);
-  bot.use(session({ initial: () => ({}) }));
 
-  // Interceptador global para QUALQUER texto no Telegram
-  bot.on(":text", async (ctx) => {
-    const pergunta = ctx.message.text;
-    console.log(`📩 MENSAGEM RECEBIDA NO TELEGRAM: "${pergunta}"`);
+    const bot = new Bot(config.telegram.token);
 
-    if (!auth.isAutenticado(ctx.from.id)) {
-      return ctx.reply('🔒 Você precisa fazer login primeiro.');
-    }
+    bot.use(
+        session({
+            initial: () => ({})
+        })
+    );
 
-    try {
-      const textoLower = pergunta.toLowerCase();
+    bot.on(":text", async (ctx) => {
 
-      // Lista de termos para acionar pesquisa direta
-      const termosTempoReal = [
-        'temperatura', 'clima', 'tempo em', 
-        'dolar', 'dólar', 'euro', 'cotacao', 'cotação', 
-        'ultimo jogo', 'último jogo', 'quem ganhou', '/pesquisar'
-      ];
+        const pergunta = String(ctx.message.text || "").trim();
+        const usuarioId = ctx.from.id;
 
-      // Se contiver qualquer termo de tempo real
-      if (termosTempoReal.some(t => textoLower.includes(t))) {
-        console.log("🌐 BUSCANDO NA WEB E RESPONDENDO DIRETO...");
-        const respostaWeb = await pesquisador.executar(pergunta);
-        
-        if (respostaWeb) {
-          await ctx.reply(respostaWeb, { parse_mode: 'Markdown' });
-          return; // Para aqui para evitar travas de IA!
+        console.log("");
+        console.log("========================================");
+        console.log("📩 MENSAGEM RECEBIDA NO TELEGRAM");
+        console.log("Usuário:", usuarioId);
+        console.log("Mensagem:", pergunta);
+        console.log("========================================");
+
+        if (!pergunta) {
+            return;
         }
-      }
 
-      // Se for conversa comum
-      await ctx.reply(`🤖 Bob respondendo: Recebi sua mensagem: "${pergunta}"`);
+        // 🔐 AUTENTICAÇÃO
+        if (!auth.isAutenticado(usuarioId)) {
+            await ctx.reply(
+                "🔒 Você precisa fazer login primeiro."
+            );
+            return;
+        }
 
-    } catch (erro) {
-      console.error("Erro no Telegram:", erro);
-      await ctx.reply("Ocorreu um erro ao processar sua mensagem.");
-    }
-  });
+        try {
 
-  return bot;
+            /*
+            ==================================================
+            1. DETECTOR DE NECESSIDADE DE INTERNET
+            ==================================================
+            */
+
+            const usarWeb = detectorWeb.precisaWeb(pergunta);
+
+            console.log(
+                usarWeb
+                    ? "🌐 Detector: INTERNET necessária."
+                    : "🧠 Detector: processamento normal."
+            );
+
+            /*
+            ==================================================
+            2. PESQUISA NA WEB
+            ==================================================
+            */
+
+            let dadosWeb = "";
+
+            if (usarWeb) {
+
+                console.log("");
+                console.log("🌐 ===== BUSCA WEB =====");
+
+                const resultadoWeb =
+                    await pesquisador.executar(pergunta);
+
+                if (resultadoWeb) {
+
+                    dadosWeb = resultadoWeb;
+
+                    console.log("✅ Dados da Web obtidos.");
+
+                } else {
+
+                    console.log(
+                        "⚠️ Pesquisa Web não retornou dados."
+                    );
+
+                }
+
+                console.log("========================");
+            }
+
+            /*
+            ==================================================
+            3. MONTA CONTEXTO PARA O KERNEL
+            ==================================================
+            */
+
+            let textoParaKernel = pergunta;
+
+            if (dadosWeb) {
+
+                textoParaKernel = `
+PERGUNTA DO USUÁRIO:
+${pergunta}
+
+DADOS ATUALIZADOS OBTIDOS NA INTERNET:
+${dadosWeb}
+
+INSTRUÇÕES:
+- Responda à pergunta original do usuário.
+- Utilize os dados atualizados acima.
+- Não diga que não possui acesso à Internet.
+- Não invente informações que não estejam nos dados fornecidos.
+- Quando houver fontes, preserve as fontes relevantes.
+`;
+
+            }
+
+            /*
+            ==================================================
+            4. ENVIA PARA O KERNEL
+            ==================================================
+            */
+
+            console.log("");
+            console.log("🧠 Enviando para o Kernel...");
+
+            const resposta = await kernel.executar({
+                texto: textoParaKernel,
+                textoOriginal: pergunta,
+                usuario: usuarioId,
+                usuarioId: usuarioId,
+                origem: "telegram",
+                web: usarWeb,
+                dadosWeb: dadosWeb
+            });
+
+            /*
+            ==================================================
+            5. VALIDA RESPOSTA
+            ==================================================
+            */
+
+            if (!resposta) {
+
+                console.log("⚠️ Kernel não retornou resposta.");
+
+                await ctx.reply(
+                    "Não consegui gerar uma resposta agora."
+                );
+
+                return;
+            }
+
+            let textoResposta;
+
+            if (typeof resposta === "string") {
+
+                textoResposta = resposta;
+
+            } else if (resposta.resposta) {
+
+                textoResposta = resposta.resposta;
+
+            } else {
+
+                textoResposta = JSON.stringify(
+                    resposta,
+                    null,
+                    2
+                );
+
+            }
+
+            /*
+            ==================================================
+            6. ENVIA AO TELEGRAM
+            ==================================================
+            */
+
+            console.log("📤 Enviando resposta ao Telegram...");
+
+            await ctx.reply(textoResposta);
+
+            console.log("✅ Resposta enviada.");
+
+        } catch (erro) {
+
+            console.error("");
+            console.error("❌ ERRO NO TELEGRAM:");
+            console.error(erro);
+
+            await ctx.reply(
+                "Ocorreu um erro ao processar sua mensagem."
+            );
+
+        }
+
+    });
+
+    return bot;
 }
 
-module.exports = { criarBot };
+module.exports = {
+    criarBot
+};
