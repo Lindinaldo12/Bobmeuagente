@@ -6,7 +6,7 @@ const { criarContexto } = require("../../core/contexto");
 const auth = require("../../core/auth");
 const pesquisador = require("../../agentes/pesquisador");
 
-console.log("✅ telegram.js atualizado com suporte a tempo real!");
+console.log("✅ telegram.js atualizado com resposta direta em tempo real!");
 
 function criarBot() {
   const bot = new Bot(config.telegram.token);
@@ -22,29 +22,32 @@ function criarBot() {
       let pergunta = ctx.message.text;
       const textoLower = pergunta.toLowerCase();
 
-      // Gatilhos para buscar na web
+      // Lista de gatilhos para tempo real
       const termosTempoReal = [
         'dolar', 'dólar', 'euro', 'cotacao', 'cotação', 
         'temperatura', 'clima', 'tempo em', 'hoje', 
         'quem ganhou', 'resultado', 'último jogo', '/pesquisar', 'pesquise'
       ];
 
-      let dadosWeb = null;
+      // Se for pergunta de tempo real, responde DIRETO sem passar pelo Kernel travado
       if (termosTempoReal.some(t => textoLower.includes(t))) {
-        console.log("🌐 Pesquisando dados atualizados na internet...");
+        console.log("🌐 PROCESSANDO CONSULTA EM TEMPO REAL...");
         const termoLimpo = pergunta.replace('/pesquisar', '').trim();
-        dadosWeb = await pesquisador.executar(termoLimpo || pergunta);
+        const respostaDireta = await pesquisador.executar(termoLimpo || pergunta);
+        
+        if (respostaDireta) {
+          usuario = memoria.adicionarHistorico(usuario, pergunta, respostaDireta);
+          memoria.salvarUsuario(usuario);
+          await ctx.reply(respostaDireta, { parse_mode: 'Markdown' });
+          return; // Finaliza aqui para a IA não interferir!
+        }
       }
 
-      let promptFinal = pergunta;
-      if (dadosWeb) {
-        promptFinal = `[INSTRUÇÃO PRIORITÁRIA]: O sistema realizou uma busca na internet em tempo real para responder o usuário. Você DEVE usar as informações fornecidas abaixo e NÃO deve dizer que não possui dados em tempo real ou acesso à internet.\n\n[DADOS EM TEMPO REAL]:\n${dadosWeb}\n\n[PERGUNTA DO USUÁRIO]:\n${pergunta}`;
-      }
-
+      // PROCESSAMENTO NORMAL PARA OUTROS ASSUNTOS (Kernel/IA)
       usuario = memoria.aprenderAutomaticamente(usuario, pergunta);
       memoria.salvarUsuario(usuario);
 
-      const contexto = criarContexto({ texto: promptFinal });
+      const contexto = criarContexto({ texto: pergunta });
       const resultado = await kernel.executar(contexto);
       const resposta = typeof resultado === "string" ? resultado : resultado.texto;
 
