@@ -7,71 +7,45 @@ class AgentePesquisador {
     this.tavilyApiKey = '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';
   }
 
-  // Cotação de Moedas
-  buscarCotacaoMoedas() {
+  async buscarCotacaoMoedas() {
     return new Promise((resolve) => {
-      const req = https.get('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL', { timeout: 8000 }, (res) => {
+      https.get('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL', { timeout: 5000 }, (res) => {
         let body = '';
         res.on('data', chunk => body += chunk);
         res.on('end', () => {
           try {
             const json = JSON.parse(body);
-            let resposta = '📊 *Cotação Atual (Fonte: AwesomeAPI)*\n\n';
-
-            if (json.USDBRL) {
-              const dolar = parseFloat(json.USDBRL.bid).toFixed(2);
-              resposta += `💵 *Dólar:* R$ ${dolar}\n`;
-            }
-            if (json.EURBRL) {
-              const euro = parseFloat(json.EURBRL.bid).toFixed(2);
-              resposta += `💶 *Euro:* R$ ${euro}\n`;
-            }
-
+            let resposta = '📊 *COTAÇÃO EM TEMPO REAL*\n\n';
+            if (json.USDBRL) resposta += `💵 *Dólar:* R$ ${parseFloat(json.USDBRL.bid).toFixed(2)}\n`;
+            if (json.EURBRL) resposta += `💶 *Euro:* R$ ${parseFloat(json.EURBRL.bid).toFixed(2)}\n`;
             resolve(resposta);
           } catch (e) {
-            resolve('📊 *Cotação Atual:* Não foi possível carregar os dados no momento.');
+            resolve('⚠️ Erro ao processar cotação.');
           }
         });
-      });
-
-      req.on('error', () => {
-        resolve('❌ Erro ao consultar a cotação no momento.');
-      });
-
-      req.end();
+      }).on('error', () => resolve('⚠️ Falha na conexão com a API de moedas.'));
     });
   }
 
-  // Pesquisa Web em Tempo Real via Tavily
   async buscarNaWebTavily(query) {
     try {
-      const response = await axios.post('https://api.tavily.com/search', {
+      const res = await axios.post('https://api.tavily.com/search', {
         api_key: this.tavilyApiKey,
         query: query,
         search_depth: 'basic',
         include_answer: true,
-        max_results: 3
-      }, { timeout: 10000 });
+        max_results: 2
+      }, { timeout: 8000 });
 
-      const data = response.data;
-
-      if (data && data.answer) {
-        let resposta = `🌐 *Pesquisa Web em Tempo Real:*\n\n${data.answer}`;
-        return resposta;
+      if (res.data && res.data.answer) {
+        return `🌐 *INFORMAÇÃO DA WEB EM TEMPO REAL:*\n\n${res.data.answer}`;
+      } else if (res.data && res.data.results && res.data.results.length > 0) {
+        return `🌐 *INFORMAÇÃO DA WEB:*\n\n${res.data.results[0].content}`;
       }
-
-      if (data && data.results && data.results.length > 0) {
-        let resposta = `🌐 *Resultados da Pesquisa Web:*\n\n`;
-        data.results.forEach((res, index) => {
-          resposta += `*${index + 1}. ${res.title}*\n${res.content.substring(0, 180)}...\n\n`;
-        });
-        return resposta;
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Erro Tavily:', error.message);
-      return null;
+      return '⚠️ Nenhuma informação encontrada na web para esse termo.';
+    } catch (err) {
+      console.error('Erro Tavily:', err.message);
+      return `⚠️ Erro ao buscar na web: ${err.message}`;
     }
   }
 
@@ -82,12 +56,7 @@ class AgentePesquisador {
       return await this.buscarCotacaoMoedas();
     }
 
-    const resultadoWeb = await this.buscarNaWebTavily(comando);
-    if (resultadoWeb) {
-      return resultadoWeb;
-    }
-
-    return '⚠️ Não foram encontradas informações atualizadas na web para essa busca.';
+    return await this.buscarNaWebTavily(comando);
   }
 }
 
