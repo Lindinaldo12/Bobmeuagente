@@ -29,7 +29,7 @@ async function verificarEOterOllama() {
     console.log("🚀 Tentando iniciar o Ollama em segundo plano...");
 
     // Inicia o processo de forma desvinculada (detached)
-// OLLAMA DESATIVADO ->     const processo = spawn("ollama", ["serve"], {
+    const processo = spawn("ollama", ["serve"], {
         detached: true,
         stdio: "ignore"
     });

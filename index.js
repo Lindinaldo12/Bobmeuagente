@@ -5,7 +5,7 @@ console.log("🚀 Iniciando aplicação do Bob...");
 
 // Tenta iniciar o Ollama em segundo plano sem derrubar a aplicação se não existir
 try {
-// OLLAMA DESATIVADO ->   const ollamaProcess = spawn('ollama', ['serve']);
+  const ollamaProcess = spawn('ollama', ['serve']);
 
   ollamaProcess.on('error', (err) => {
     console.log("⚠️ Ollama não está instalado/disponível neste ambiente. Prosseguindo sem Ollama local...");
