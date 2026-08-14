@@ -118,8 +118,250 @@ class AgentePesquisador {
       }
 
       // ==========================================
+      // 🕒 FILTRO DE RELEVÂNCIA TEMPORAL
+      // ==========================================
+
+      const consultaNormalizada =
+        termoOriginal
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase();
+
+      const buscaAtual =
+        /\b(agora|atual|atualmente|neste momento|nesse momento)\b/
+          .test(consultaNormalizada);
+
+      let resultadosFiltrados = resultados;
+
+      // ==========================================
+      // 📅 VALIDAÇÃO DE DATA NO CONTEÚDO
+      // ==========================================
+
+      const agora = new Date();
+
+      const diaAtual =
+        String(agora.getDate()).padStart(2, "0");
+
+      const mesAtual =
+        String(agora.getMonth() + 1).padStart(2, "0");
+
+      const anoAtual =
+        String(agora.getFullYear());
+
+      const dataAtualBR =
+        `${diaAtual}/${mesAtual}/${anoAtual}`;
+
+      if (buscaAtual && resultados.length > 1) {
+
+        resultadosFiltrados =
+          resultados
+            .map((resultado) => {
+
+              const titulo =
+                String(resultado?.title || "")
+                  .normalize("NFD")
+                  .replace(/[\\u0300-\\u036f]/g, "")
+                  .toLowerCase();
+
+              const conteudo =
+                String(resultado?.content || "")
+                  .normalize("NFD")
+                  .replace(/[\\u0300-\\u036f]/g, "")
+                  .toLowerCase();
+
+              const texto =
+                `${titulo} ${conteudo}`;
+
+              let pontos = 0;
+
+              // ==========================================
+              // 📅 DATA EXPLÍCITA DE HOJE
+              // ==========================================
+
+              const dataHoje =
+                texto.includes(dataAtualBR);
+
+              if (dataHoje) {
+                pontos += 40;
+              }
+
+              // ==========================================
+              // 📅 DATA ANTIGA DETECTADA
+              // ==========================================
+
+              const datasEncontradas =
+                texto.match(
+                  /\b\d{1,2}[\/-]\d{1,2}[\/-]\d{4}\b/g
+                ) || [];
+
+              const meses = {
+                janeiro: 1,
+                fevereiro: 2,
+                marco: 3,
+                março: 3,
+                abril: 4,
+                maio: 5,
+                junho: 6,
+                julho: 7,
+                agosto: 8,
+                setembro: 9,
+                outubro: 10,
+                novembro: 11,
+                dezembro: 12
+              };
+
+              const datasPorExtenso =
+                texto.match(
+                  /\b\d{1,2}\s+de\s+[a-zç]+\s+de\s+\d{4}\b/g
+                ) || [];
+
+              for (const dataTexto of datasPorExtenso) {
+
+                const partes =
+                  dataTexto
+                    .replace(/\s+/g, " ")
+                    .split(" de ");
+
+                if (partes.length !== 3) {
+                  continue;
+                }
+
+                const dia = Number(partes[0]);
+                const mes = meses[partes[1]];
+                const ano = Number(partes[2]);
+
+                if (
+                  !mes ||
+                  ano !== agora.getFullYear() ||
+                  mes !== agora.getMonth() + 1 ||
+                  dia !== agora.getDate()
+                ) {
+                  datasEncontradas.push(dataTexto);
+                }
+
+              }
+
+              for (const dataTexto of datasEncontradas) {
+
+                const partes =
+                  dataTexto.replace(/-/g, "/").split("/");
+
+                if (partes.length !== 3) {
+                  continue;
+                }
+
+                const dia =
+                  Number(partes[0]);
+
+                const mes =
+                  Number(partes[1]);
+
+                const ano =
+                  Number(partes[2]);
+
+                if (
+                  ano !== agora.getFullYear() ||
+                  mes !== agora.getMonth() + 1 ||
+                  dia !== agora.getDate()
+                ) {
+                  pontos -= 50;
+                }
+              }
+
+              // ==========================================
+              // 🔎 RELEVÂNCIA TEMPORAL
+              // ==========================================
+
+              if (
+                titulo.includes("tempo agora") ||
+                titulo.includes("agora")
+              ) {
+                pontos += 30;
+              }
+
+              if (texto.includes("tempo agora")) {
+                pontos += 15;
+              }
+
+              if (
+                texto.includes("no momento") ||
+                texto.includes("neste momento")
+              ) {
+                pontos += 12;
+              }
+
+              if (texto.includes("temperatura atual")) {
+                pontos += 12;
+              }
+
+              if (texto.includes("esta fazendo")) {
+                pontos += 10;
+              }
+
+              if (texto.includes("agora")) {
+                pontos += 5;
+              }
+
+              if (texto.includes("hoje")) {
+                pontos += 2;
+              }
+
+              // ==========================================
+              // 🚫 CONTEÚDO FUTURO / HISTÓRICO
+              // ==========================================
+
+              if (titulo.includes("previsao para 5 dias")) {
+                pontos -= 25;
+              }
+
+              if (titulo.includes("15 dias")) {
+                pontos -= 30;
+              }
+
+              if (
+                texto.includes("historico") ||
+                texto.includes("histórico")
+              ) {
+                pontos -= 20;
+              }
+
+              if (texto.includes("previsao para cinco dias")) {
+                pontos -= 25;
+              }
+
+              return {
+                resultado,
+                pontos,
+                dataHoje,
+                datasEncontradas,
+                dataAntiga:
+                  possuiDataExplicita && !dataHoje
+              };
+
+            })
+            .filter(item => !item.dataAntiga)
+            .sort((a, b) => {
+
+              if (b.pontos !== a.pontos) {
+                return b.pontos - a.pontos;
+              }
+
+              return (
+                Number(b.resultado?.score || 0) -
+                Number(a.resultado?.score || 0)
+              );
+
+            })
+            .slice(0, 3)
+            .map(item => item.resultado);
+
+
+
+      // ==========================================
+        }
       // 📦 MONTAGEM DOS DADOS
       // ==========================================
+
 
       const resposta = [];
 
@@ -136,13 +378,13 @@ class AgentePesquisador {
       // FONTES VÊM ANTES DO RESUMO DO TAVILY
       // ==========================================
 
-      if (resultados.length > 0) {
+      if (resultadosFiltrados.length > 0) {
 
         resposta.push(
           "\n\n### FONTES DA PESQUISA"
         );
 
-        resultados.slice(0, 5).forEach(
+        resultadosFiltrados.forEach(
           (resultado, index) => {
 
             const titulo =
@@ -201,7 +443,7 @@ class AgentePesquisador {
 
       console.log(
         "📚 Fontes preservadas:",
-        resultados.length
+        resultadosFiltrados.length
       );
 
       console.log(

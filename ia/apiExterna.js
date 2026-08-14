@@ -34,14 +34,25 @@ async function chamarAPI(pergunta, contextoUsuario = {}) {
             );
     }
 
-    const messages = [
-        {
-            role: "system",
-            content:
-                "Você é o Bob AI X." +
-                regrasPersonais
-        }
-    ];
+    const promptSistema =
+          String(
+              contextoUsuario?.promptSistema ||
+              ""
+          ).trim();
+
+      const sistemaFinal =
+          promptSistema ||
+          (
+              "Você é o Bob AI X." +
+              regrasPersonais
+          );
+
+      const messages = [
+          {
+              role: "system",
+              content: sistemaFinal
+          }
+      ];
 
     if (
         contextoUsuario?.dadosWeb &&
