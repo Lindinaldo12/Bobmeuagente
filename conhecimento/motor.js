@@ -24,7 +24,26 @@ const STOPWORDS = [
     "mostre",
     "fale",
     "analise",
-    "analisei"
+    "analisei",
+
+    // ==========================================
+    // TERMOS GENÉRICOS
+    // ==========================================
+    // Não ajudam a identificar um documento.
+    // Evitam falsos positivos na Base de Conhecimento.
+
+    "palavra",
+    "origem",
+    "historica",
+    "historico",
+    "criar",
+    "fazer",
+    "explicar",
+    "nome",
+    "projeto",
+    "pergunta",
+    "coisa",
+    "coisas"
 ];
 
 

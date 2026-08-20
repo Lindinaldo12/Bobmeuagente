@@ -14,14 +14,27 @@ async function executarEspecialista(perguntaUsuario, documentosDaBase, promptDoA
 
     let memoria = "";
     if (usuario && usuario.id) {
-        const memoriaLongoPrazo = require("../memoria/longoPrazo");
-        const fatos = memoriaLongoPrazo.lerFatos(String(usuario.id));
+        const memoriaV4 = require("../memoria_v4/interface");
+        const fatos = memoriaV4.lerFatos(usuario);
         if (fatos.length > 0) {
             memoria = "\n\n🧠 MEMÓRIA SOBRE O USUÁRIO:\n- " + fatos.join("\n- ");
         }
     }
 
-    const promptFinal = promptDoAgente + memoria + "\n\n📚 BASE DE CONHECIMENTO:\n" + textoBase;
+    let identidadeTexto = "";
+
+    if (usuario && usuario.identidade) {
+        identidadeTexto =
+            "\n\n🔐 IDENTIDADE OFICIAL DO USUÁRIO:\n" +
+            JSON.stringify(usuario.identidade, null, 2);
+    }
+
+    const promptFinal =
+        promptDoAgente +
+        identidadeTexto +
+        memoria +
+        "\n\n📚 BASE DE CONHECIMENTO:\n" +
+        textoBase;
     const perguntaCompleta = promptFinal + "\n\n❓ PERGUNTA DO USUÁRIO: " + perguntaUsuario;
 
     console.log(" RAIO-X: Usando API de Nuvem (OpenRouter)");

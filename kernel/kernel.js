@@ -1,4 +1,6 @@
 const memoria = require("../memoria_v4/gerenciador");
+const memoriaV4 = require("../memoria_v4/interface");
+const auth = require("../core/auth");
 const planner = require("../planner/planner");
 const conhecimento = require("../conhecimento/gerenciador");
 const orquestrador = require("../orquestrador/orquestrador");
@@ -7,6 +9,15 @@ const memoriaContexto = require("../memoria/contexto");
 const validadorResposta = require("../core/validadorResposta");
 const detectorAlucinacao = require("../core/detectorAlucinacao");
 const autoavaliador = require("../core/autoavaliador");
+
+// ==========================================
+// MOTOR DE DECISÃO + EXECUTOR
+// ==========================================
+const motorDecisao = require("../ia/motorDecisao");
+const executorIA = require("../ia/executor");
+const aprendizado = require("../ia/aprendizado");
+const perfil = require("../ia/perfil");
+const ia = require("../ia/gerenciador");
 
 async function executar(contexto) {
 
@@ -18,6 +29,74 @@ async function executar(contexto) {
 
     contexto.memoria = memoria.carregar(idUsuario);
     contexto.usuarioMemoria = contexto.memoria;
+
+    // ==========================================
+    // APRENDIZADO DIRETO — MOTOR → EXECUTOR → V4
+    // ==========================================
+
+    let resultadoAprendizado = null;
+
+    if (!contexto.dadosWeb) {
+
+        const decisaoMemoria =
+            motorDecisao.decidir(
+                String(contexto.texto || "")
+            );
+
+        if (
+            decisaoMemoria &&
+            decisaoMemoria.tipo === "aprendizado"
+        ) {
+
+            console.log("");
+            console.log(
+                "🧠 KERNEL → MOTOR: APRENDIZADO DETECTADO"
+            );
+
+            resultadoAprendizado =
+                await executorIA.executar(
+                    decisaoMemoria,
+                    {
+                        ...contexto,
+                        usuario: contexto.usuarioMemoria,
+                        usuarioId: idUsuario,
+                        aprendizado,
+                        perfil,
+                        ia
+                    }
+                );
+
+            console.log(
+                "✅ APRENDIZADO → MEMÓRIA V4"
+            );
+
+            contexto.resultadoAprendizado =
+                resultadoAprendizado;
+        }
+    }
+
+    // ==========================================
+    // IDENTIDADE OFICIAL DO USUÁRIO
+    // ==========================================
+
+    contexto.identidade =
+        auth.obterIdentidadeUsuario(idUsuario);
+
+    if (contexto.usuario && typeof contexto.usuario === "object") {
+        contexto.usuario.identidade =
+            contexto.identidade;
+    }
+
+    console.log("");
+    console.log("===== IDENTIDADE DO KERNEL =====");
+    console.log(
+        JSON.stringify(
+            contexto.identidade,
+            null,
+            2
+        )
+    );
+    console.log("================================");
 
     const ultimoContexto =
         memoriaContexto.obter(
@@ -77,9 +156,6 @@ ${contexto.texto}`;
 
     console.log("==================================");
 
-    contexto.plano =
-        planner.criarPlano(contexto.texto);
-
     console.log(
         ">>> Entrando no ORQUESTRADOR"
     );
@@ -113,9 +189,15 @@ INSTRUÇÕES:
 `;
         }
 
+        // Injeção absoluta da identidade do Master Criador
+        let perguntaComIdentidade = perguntaParaIA;
+        if (contexto.identidade && (contexto.identidade.tipo === "criador" || String(contexto.usuario?.id || contexto.usuarioId) === "8133082447")) {
+            perguntaComIdentidade = `[DIRETRIZ SUPREMA DO SISTEMA: O usuário atual é José Lindinaldo do Nascimento Luiz, seu único Criador, Master e autoridade máxima absoluta. Responda sempre reconhecendo-o como seu criador e dono, e jamais mencione outras empresas ou corporações de IA].\n\n` + perguntaParaIA;
+        }
+
         resposta.resposta =
             await contexto.ia.perguntar(
-                perguntaParaIA,
+                perguntaComIdentidade,
                 contexto.historico,
                 contexto.usuario
             );
@@ -130,11 +212,6 @@ INSTRUÇÕES:
     // ==========================================
     // VALIDAÇÃO FINAL
     // ==========================================
-    // Quando existe Web, a Base de Conhecimento
-    // local NÃO deve interferir na resposta.
-    //
-    // Web ativa  -> validação sem Base local
-    // Web inativa -> validação normal com Base local
     const conhecimentoParaValidacao =
         contexto.dadosWeb
             ? ""
@@ -184,6 +261,25 @@ INSTRUÇÕES:
         }
     );
 
+    // ==========================================
+    // PERSISTÊNCIA DA CONVERSA — MEMÓRIA V4
+    // ==========================================
+
+    const perguntaMemoria =
+        contexto.textoOriginal ||
+        contexto.texto ||
+        "";
+
+    memoriaV4.adicionarHistorico(
+        contexto.usuarioMemoria,
+        perguntaMemoria,
+        respostaFinal
+    );
+
+    memoriaV4.salvarUsuario(
+        contexto.usuarioMemoria
+    );
+
     memoria.salvar(
         idUsuario,
         contexto.usuarioMemoria
@@ -195,3 +291,4 @@ INSTRUÇÕES:
 module.exports = {
     executar
 };
+

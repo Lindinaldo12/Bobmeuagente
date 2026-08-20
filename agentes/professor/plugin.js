@@ -31,36 +31,66 @@ async function executar(contexto) {
 
     let memoriaUsuario = "";
 
-    if (contexto?.usuario?.perfil) {
+    // ==========================================
+    // MEMÓRIA V4
+    // ==========================================
 
-        const perfil =
-            contexto.usuario.perfil;
+    const memoriaV4 =
+        contexto?.usuarioMemoria ||
+        contexto?.memoria ||
+        {};
 
-        const interesses =
-            Array.isArray(perfil.interesses)
-                ? perfil.interesses
-                : [];
+    const perfil =
+        memoriaV4.perfil || {};
 
-        const objetivo =
-            perfil.objetivo_atual || "";
+    const projetos =
+        Array.isArray(perfil.projetos)
+            ? perfil.projetos
+            : [];
 
-        if (
-            interesses.length > 0 ||
-            objetivo
-        ) {
+    const objetivos =
+        Array.isArray(perfil.objetivos)
+            ? perfil.objetivos
+            : [];
 
-            memoriaUsuario =
-                "\nMEMÓRIA DO USUÁRIO:\n";
+    const interesses =
+        Array.isArray(perfil.interesses)
+            ? perfil.interesses
+            : [];
 
-            if (objetivo) {
-                memoriaUsuario +=
-                    `Objetivo atual: ${objetivo}\n`;
-            }
+    const conhecimentos =
+        Array.isArray(memoriaV4.conhecimentos)
+            ? memoriaV4.conhecimentos
+            : [];
 
-            if (interesses.length > 0) {
-                memoriaUsuario +=
-                    `Interesses: ${interesses.join(", ")}\n`;
-            }
+    if (
+        projetos.length > 0 ||
+        objetivos.length > 0 ||
+        interesses.length > 0 ||
+        conhecimentos.length > 0
+    ) {
+
+        memoriaUsuario =
+            "\nMEMÓRIA V4 DO USUÁRIO:\n";
+
+        if (projetos.length > 0) {
+            memoriaUsuario +=
+                `Projetos: ${projetos.join(", ")}\n`;
+        }
+
+        if (objetivos.length > 0) {
+            memoriaUsuario +=
+                `Objetivos: ${objetivos.join(", ")}\n`;
+        }
+
+        if (interesses.length > 0) {
+            memoriaUsuario +=
+                `Interesses: ${interesses.join(", ")}\n`;
+        }
+
+        if (conhecimentos.length > 0) {
+            memoriaUsuario +=
+                `Conhecimentos: ${conhecimentos.join(", ")}\n`;
         }
     }
 

@@ -1,0 +1,131 @@
+{
+  "master": {
+    "id": "8133082447",
+    "senha": "master123",
+    "status": "ativo",
+    "preferencias": {
+      "estilo_resposta": "tecnico",
+      "usar_emojis": true,
+      "idioma": "pt-BR"
+    },
+    "plugins_instalados": [
+      "questoes_matematica",
+      "cronograma_estudos",
+      "questoes_concurso",
+      "provas_anteriores",
+      "sesgranrio",
+      "lei_seca",
+      "redacao_discursiva",
+      "biblioteca_espirita"
+    ],
+    "recuperacao": {
+      "hash": "5145e1ed637b84470af975fe63e3c96a10ed9d2ae7cbc65507fc741bf3fd5546",
+      "expiraEm": 1786813525061,
+      "usado": false,
+      "criadoEm": 1786812625062
+    },
+    "criador": {
+      "tipo": "criador",
+      "id": "8133082447",
+      "identidadePermanente": true,
+      "reconhecidoDesde": "2026-08-15T22:24:46.040Z",
+      "origem": "MASTER_ID",
+      "identidadeCentralId": "bob-criador-c2ac18decefb769e5890a90bd0d80049a38468bd98e9a88d",
+      "canais": {
+        "telegram": {
+          "id": "8133082447",
+          "identidadeCentralId": "bob-criador-c2ac18decefb769e5890a90bd0d80049a38468bd98e9a88d",
+          "autorizado": true
+        },
+        "windows": {
+          "id": "outro-windows-nao-autorizado",
+          "identidadeCentralId": "bob-criador-c2ac18decefb769e5890a90bd0d80049a38468bd98e9a88d",
+          "autorizado": true,
+          "vinculadoEm": "2026-08-16T17:05:41.644Z"
+        }
+      },
+      "codigosVinculacao": [
+        {
+          "canal": "windows",
+          "codigo": "838085d110cd50368586088fadd78fbc662717759a7f6c6a1d81b080b69aa86b",
+          "criadoEm": "2026-08-16T13:38:34.771Z",
+          "usado": true,
+          "usadoEm": "2026-08-16T16:49:06.985Z"
+        },
+        {
+          "canal": "windows",
+          "codigo": "bb9c260940127263c8bfdd7eb4b9d121222da56619c45b7cf7ab58c75e1b1968",
+          "criadoEm": "2026-08-16T16:53:58.581Z",
+          "usado": true,
+          "usadoEm": "2026-08-16T16:53:58.595Z"
+        },
+        {
+          "canal": "windows",
+          "codigo": "80459abe1e2df1ef64fb4999da7d099aa82e307d0ee28974918e5b8c603c2570",
+          "criadoEm": "2026-08-16T16:55:55.831Z",
+          "usado": false
+        },
+        {
+          "canal": "windows",
+          "codigo": "3312221ef6dac49800c76bb1361ddfc8ed72eceefe12b1becfbd0fb75d9c6e15",
+          "criadoEm": "2026-08-16T16:57:31.414Z",
+          "usado": true,
+          "usadoEm": "2026-08-16T16:57:31.421Z"
+        },
+        {
+          "canal": "windows",
+          "codigo": "a26e3b148149c9fce3b6e1e83557ca085adfc4f739a633fbf1a951c1afcce4a9",
+          "criadoEm": "2026-08-16T16:59:55.976Z",
+          "usado": true,
+          "usadoEm": "2026-08-16T16:59:55.980Z"
+        },
+        {
+          "canal": "windows",
+          "codigo": "8fd0ae30118e784016f2dbefb144df39cfe63cf7e0d43fc92d431c5afbd8d040",
+          "criadoEm": "2026-08-16T17:05:41.639Z",
+          "usado": true,
+          "usadoEm": "2026-08-16T17:05:41.644Z"
+        },
+        {
+          "canal": "windows",
+          "codigo": "4e8b41642e81d6fc74074217089f37ee54138b1c53726ef1b1f75a08f26a1a6b",
+          "criadoEm": "2026-08-16T17:08:05.329Z",
+          "usado": false
+        }
+      ],
+      "assinaturaIdentidadeCentral": "a032f6ca211665f5b149cb4eae249a5ec6bc0ad7fbfed08fcfbc5ee9fd473f7c"
+    }
+  },
+  "usuarios": {
+    "999888777": {
+      "id": "999888777",
+      "nome": "Maria",
+      "senha": "senha123",
+      "status": "ativo",
+      "autenticado": false,
+      "criado_em": "2026-08-10T16:30:47.325Z",
+      "preferencias": {
+        "estilo_resposta": "normal",
+        "usar_emojis": true,
+        "idioma": "pt-BR",
+        "tamanho_resposta": "medio",
+        "assuntos_interesse": []
+      }
+    },
+    "5485007541": {
+      "id": "5485007541",
+      "nome": "Terapia Lindinaldo",
+      "senha": "0cf7d384",
+      "status": "ativo",
+      "criado_em": "2026-08-10T16:51:04.346Z",
+      "primeiro_acesso": true,
+      "preferencias": {
+        "estilo_resposta": "normal",
+        "usar_emojis": true,
+        "idioma": "pt-BR",
+        "tamanho_resposta": "medio",
+        "assuntos_interesse": []
+      }
+    }
+  }
+}

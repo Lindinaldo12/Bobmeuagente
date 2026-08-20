@@ -133,7 +133,30 @@ function responder(usuario, pergunta) {
         texto === "esse projeto" ||
         texto === "ele"
     ) {
-        const ultimoProjeto = contexto.obter(usuario.id, "ultimo_projeto");
+        // ==========================================
+        // ÚLTIMO PROJETO — MEMÓRIA V4 PERSISTENTE
+        // ==========================================
+
+        let ultimoProjeto =
+            usuario?.perfil?.ultimoProjeto || null;
+
+        // Compatibilidade com contexto temporário.
+        if (!ultimoProjeto) {
+            ultimoProjeto =
+                contexto.obter(
+                    usuario.id,
+                    "ultimoProjeto"
+                );
+        }
+
+        // Compatibilidade com versões antigas.
+        if (!ultimoProjeto) {
+            ultimoProjeto =
+                contexto.obter(
+                    usuario.id,
+                    "ultimo_projeto"
+                );
+        }
 
         if (!ultimoProjeto) {
             return "Ainda não sei a qual projeto você está se referindo.";

@@ -1,4 +1,4 @@
-const memoriaV2 = require("../memoria_v2");
+const memoriaV4 = require("../memoria_v4/interface");
 
 function adicionar(usuario, campo, valor) {
 
@@ -12,7 +12,7 @@ function adicionar(usuario, campo, valor) {
 
     if (!usuario.perfil[campo].includes(valor)) {
         usuario.perfil[campo].push(valor);
-        memoriaV2.salvarUsuario(usuario);
+        memoriaV4.salvarUsuario(usuario);
         return true;
     }
 

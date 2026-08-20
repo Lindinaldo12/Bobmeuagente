@@ -1,0 +1,61 @@
+{
+  "master": {
+    "id": "8133082447",
+    "senha": "master123",
+    "status": "ativo",
+    "preferencias": {
+      "estilo_resposta": "tecnico",
+      "usar_emojis": true,
+      "idioma": "pt-BR"
+    },
+    "plugins_instalados": [
+      "questoes_matematica",
+      "cronograma_estudos",
+      "questoes_concurso",
+      "provas_anteriores",
+      "sesgranrio",
+      "lei_seca",
+      "redacao_discursiva",
+      "biblioteca_espirita"
+    ],
+    "recuperacao": {
+      "hash": "f8ee6e0694e4680e0fd8e98351ce7f8c18ff0d6e4de1b809a53daf5954e71c60",
+      "expiraEm": 1786812615623,
+      "usado": true,
+      "criadoEm": 1786811715623,
+      "usadoEm": 1786811715626
+    }
+  },
+  "usuarios": {
+    "999888777": {
+      "id": "999888777",
+      "nome": "Maria",
+      "senha": "senha123",
+      "status": "ativo",
+      "autenticado": false,
+      "criado_em": "2026-08-10T16:30:47.325Z",
+      "preferencias": {
+        "estilo_resposta": "normal",
+        "usar_emojis": true,
+        "idioma": "pt-BR",
+        "tamanho_resposta": "medio",
+        "assuntos_interesse": []
+      }
+    },
+    "5485007541": {
+      "id": "5485007541",
+      "nome": "Terapia Lindinaldo",
+      "senha": "0cf7d384",
+      "status": "ativo",
+      "criado_em": "2026-08-10T16:51:04.346Z",
+      "primeiro_acesso": true,
+      "preferencias": {
+        "estilo_resposta": "normal",
+        "usar_emojis": true,
+        "idioma": "pt-BR",
+        "tamanho_resposta": "medio",
+        "assuntos_interesse": []
+      }
+    }
+  }
+}

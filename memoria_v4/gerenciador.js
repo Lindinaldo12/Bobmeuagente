@@ -3,51 +3,70 @@ const path = require("path");
 
 const DIR = path.join(__dirname, "usuarios");
 
+if (!fs.existsSync(DIR)) {
+    fs.mkdirSync(DIR, { recursive: true });
+}
+
 function caminhoUsuario(id) {
     return path.join(DIR, `${id}.json`);
+}
+
+function garantirEstrutura(memoria, id) {
+    memoria.id ??= String(id);
+
+    memoria.criadoEm ??= new Date().toISOString();
+
+    memoria.atualizadoEm ??= new Date().toISOString();
+
+    memoria.perfil ??= {};
+    memoria.preferencias ??= {};
+
+    memoria.perfil.projetos ??= [];
+    memoria.perfil.objetivos ??= [];
+    memoria.perfil.interesses ??= [];
+    memoria.perfil.ultimoProjeto ??= null;
+
+    memoria.conhecimentos ??= [];
+    memoria.conversas ??= [];
+
+    memoria.resumo ??= "";
+
+    return memoria;
 }
 
 function carregar(id) {
     const arquivo = caminhoUsuario(id);
 
     if (!fs.existsSync(arquivo)) {
-        return {
-            id,
+        return garantirEstrutura({
+            id: String(id),
             criadoEm: new Date().toISOString(),
             atualizadoEm: new Date().toISOString(),
             perfil: {},
             preferencias: {},
-            projetos: [],
             conhecimentos: [],
             conversas: [],
             resumo: ""
-        };
+        }, id);
     }
 
-    return JSON.parse(
-        fs.readFileSync(arquivo, "utf8")
-    );
+    let memoria;
+
+    try {
+        memoria = JSON.parse(
+            fs.readFileSync(arquivo, "utf8")
+        );
+    } catch (erro) {
+        throw new Error(
+            `Não foi possível ler a memória do usuário ${id}: ${erro.message}`
+        );
+    }
+
+    return garantirEstrutura(memoria, id);
 }
 
 function salvar(id, memoria) {
-    // ✅ NOVO: Extrator de informações
-    const extrator = require("./extrator");
-
-    if (memoria.ultimaMensagem) {
-        const dados = extrator.extrair(memoria.ultimaMensagem);
-
-        if (dados.nome) {
-            memoria.perfil.nome = dados.nome;
-        }
-
-        if (dados.projeto) {
-            memoria.projetos.push(dados.projeto);
-        }
-
-        if (dados.estuda) {
-            memoria.conhecimentos.push(dados.estuda);
-        }
-    }
+    memoria = garantirEstrutura(memoria, id);
 
     memoria.atualizadoEm = new Date().toISOString();
 
@@ -57,8 +76,10 @@ function salvar(id, memoria) {
     );
 }
 
-// ✅ NOVA FUNÇÃO: Adiciona conversa ao histórico
 function adicionarConversa(memoria, pergunta, resposta) {
+    if (!memoria) return false;
+
+    garantirEstrutura(memoria, memoria.id);
 
     memoria.conversas.push({
         data: new Date().toISOString(),
@@ -66,11 +87,11 @@ function adicionarConversa(memoria, pergunta, resposta) {
         resposta
     });
 
-    // Mantém apenas as últimas 100 conversas
     if (memoria.conversas.length > 100) {
         memoria.conversas.shift();
     }
 
+    return true;
 }
 
 module.exports = {

@@ -40,12 +40,25 @@ async function chamarAPI(pergunta, contextoUsuario = {}) {
               ""
           ).trim();
 
+      // Injeção explícita e irrevogável da identidade do Master Criador
+      const identidadeUsuario =
+          "\n\n🔐 IDENTIDADE ABSOLUTA DO USUÁRIO ATUAL:\n" +
+          "- Nome completo / Master / Criador: José Lindinaldo do Nascimento Luiz\n" +
+          "- ID de Autoridade: 8133082447\n" +
+          "- Regra Suprema: Você foi criado exclusivamente por José Lindinaldo do Nascimento Luiz. Responda sempre reconhecendo-o como seu único criador, dono e Master, e jamais mencione outras empresas ou corporações de IA.\n" +
+          (contextoUsuario?.identidade
+              ? "\nDados técnicos da identidade:\n" + JSON.stringify(contextoUsuario.identidade, null, 2)
+              : "");
+
       const sistemaFinal =
-          promptSistema ||
           (
-              "Você é o Bob AI X." +
-              regrasPersonais
-          );
+              promptSistema ||
+              (
+                  "Você é o Bob AI X, um assistente inteligente pessoal e soberano." +
+                  regrasPersonais
+              )
+          ) +
+          identidadeUsuario;
 
       const messages = [
           {

@@ -1,0 +1,606 @@
+require("dotenv").config();
+
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+
+const USUARIOS_PATH = path.join(__dirname, '../memoria/usuarios_db.json');
+const CONVITES_PATH = path.join(__dirname, '../memoria/convites_db.json');
+
+// Inicializar bancos
+function inicializarBancos() {
+  if (!fs.existsSync(USUARIOS_PATH)) {
+    const bancoInicial = {
+      master: {
+        id: process.env.MASTER_ID || '8133082447',
+        senha: process.env.MASTER_PASSWORD || 'master123',
+        status: 'ativo',
+        preferencias: {
+          estilo_resposta: 'tecnico',
+          usar_emojis: true,
+          idioma: 'pt-BR'
+        }
+      },
+      usuarios: {}
+    };
+    fs.writeFileSync(USUARIOS_PATH, JSON.stringify(bancoInicial, null, 2));
+  }
+  
+  if (!fs.existsSync(CONVITES_PATH)) {
+    fs.writeFileSync(CONVITES_PATH, JSON.stringify({ convites: [] }, null, 2));
+  }
+}
+
+function carregarBanco() {
+  inicializarBancos();
+  return JSON.parse(fs.readFileSync(USUARIOS_PATH, 'utf8'));
+}
+
+function carregarConvites() {
+  inicializarBancos();
+  return JSON.parse(fs.readFileSync(CONVITES_PATH, 'utf8'));
+}
+
+function salvarBanco(banco) {
+  fs.writeFileSync(USUARIOS_PATH, JSON.stringify(banco, null, 2));
+}
+
+function salvarConvites(convites) {
+  fs.writeFileSync(CONVITES_PATH, JSON.stringify(convites, null, 2));
+}
+
+
+// ==========================================================
+// RECUPERAÇÃO SEGURA DA CONTA MASTER
+// ==========================================================
+
+function gerarRecuperacaoMaster() {
+
+  const segredo = String(
+    process.env.MASTER_RECOVERY_SECRET || ""
+  ).trim();
+
+  if (segredo.length < 64) {
+    return {
+      sucesso: false,
+      mensagem: "❌ Segredo de recuperação não configurado."
+    };
+  }
+
+  const codigo = crypto
+    .randomBytes(24)
+    .toString("hex");
+
+  const hash = crypto
+    .createHmac("sha256", segredo)
+    .update(codigo)
+    .digest("hex");
+
+  const expiraEm =
+    Date.now() + (15 * 60 * 1000);
+
+  const banco = carregarBanco();
+
+  banco.master.recuperacao = {
+    hash,
+    expiraEm,
+    usado: false,
+    criadoEm: Date.now()
+  };
+
+  salvarBanco(banco);
+
+  return {
+    sucesso: true,
+    codigo,
+    hash,
+    expiraEm
+  };
+}
+
+
+function validarRecuperacaoMaster(
+  codigo,
+  hashEsperado,
+  expiraEm
+) {
+
+  const segredo = String(
+    process.env.MASTER_RECOVERY_SECRET || ""
+  ).trim();
+
+  if (segredo.length < 64) {
+    return {
+      sucesso: false,
+      mensagem: "❌ Recuperação MASTER não configurada."
+    };
+  }
+
+  if (!codigo || !hashEsperado || !expiraEm) {
+    return {
+      sucesso: false,
+      mensagem: "❌ Dados de recuperação incompletos."
+    };
+  }
+
+  const banco = carregarBanco();
+  const recuperacao = banco.master?.recuperacao;
+
+  if (!recuperacao) {
+    return {
+      sucesso: false,
+      mensagem: "❌ Nenhuma recuperação MASTER ativa."
+    };
+  }
+
+  if (recuperacao.usado) {
+    return {
+      sucesso: false,
+      mensagem: "🔒 Este código de recuperação já foi utilizado."
+    };
+  }
+
+  if (
+    String(recuperacao.hash) !== String(hashEsperado) ||
+    Number(recuperacao.expiraEm) !== Number(expiraEm)
+  ) {
+    return {
+      sucesso: false,
+      mensagem: "❌ Dados de recuperação não correspondem à recuperação ativa."
+    };
+  }
+
+  if (Date.now() > Number(recuperacao.expiraEm)) {
+    recuperacao.usado = true;
+    salvarBanco(banco);
+
+    return {
+      sucesso: false,
+      mensagem: "⏱️ Código de recuperação expirado."
+    };
+  }
+
+  const hashRecebido = crypto
+    .createHmac("sha256", segredo)
+    .update(String(codigo))
+    .digest("hex");
+
+  const esperado = String(recuperacao.hash);
+
+  if (
+    hashRecebido.length !== esperado.length ||
+    !crypto.timingSafeEqual(
+      Buffer.from(hashRecebido),
+      Buffer.from(esperado)
+    )
+  ) {
+    return {
+      sucesso: false,
+      mensagem: "❌ Código de recuperação inválido."
+    };
+  }
+
+  // 🔒 CONSUMO DO CÓDIGO
+  recuperacao.usado = true;
+  recuperacao.usadoEm = Date.now();
+
+  salvarBanco(banco);
+
+  return {
+    sucesso: true,
+    mensagem: "✅ Recuperação MASTER validada e código consumido."
+  };
+}
+
+
+
+function recuperarSenhaMaster(
+  codigo,
+  hashEsperado,
+  expiraEm,
+  novaSenha
+) {
+
+  const senha = String(novaSenha || "");
+
+  if (senha.length < 12) {
+    return {
+      sucesso: false,
+      mensagem: "❌ A nova senha MASTER deve possuir pelo menos 12 caracteres."
+    };
+  }
+
+  const validacao = validarRecuperacaoMaster(
+    codigo,
+    hashEsperado,
+    expiraEm
+  );
+
+  if (!validacao.sucesso) {
+    return validacao;
+  }
+
+  const banco = carregarBanco();
+
+  if (!banco.master) {
+    return {
+      sucesso: false,
+      mensagem: "❌ Conta MASTER não encontrada."
+    };
+  }
+
+  banco.master.senha = senha;
+  banco.master.senhaAlteradaEm = new Date().toISOString();
+
+  salvarBanco(banco);
+
+  return {
+    sucesso: true,
+    mensagem: "✅ Senha MASTER recuperada e alterada com sucesso."
+  };
+}
+
+function verificarIntegridadeCriador() {
+  const banco = carregarBanco();
+
+  if (!banco.master) {
+    return {
+      valido: false,
+      motivo: "Conta MASTER não encontrada."
+    };
+  }
+
+  if (!banco.master.criador) {
+    return {
+      valido: false,
+      motivo: "Identidade do Criador não encontrada."
+    };
+  }
+
+  const criador = banco.master.criador;
+
+  if (criador.identidadePermanente !== true) {
+    return {
+      valido: false,
+      motivo: "Identidade do Criador não está marcada como permanente."
+    };
+  }
+
+  if (String(criador.id) !== String(banco.master.id)) {
+    return {
+      valido: false,
+      motivo: "ID do Criador não corresponde ao ID MASTER."
+    };
+  }
+
+  const masterEnv = String(
+    process.env.MASTER_ID || ""
+  ).trim();
+
+  if (!masterEnv) {
+    return {
+      valido: false,
+      motivo: "MASTER_ID não está configurado."
+    };
+  }
+
+  if (String(banco.master.id) !== masterEnv) {
+    return {
+      valido: false,
+      motivo: "ID MASTER do banco não corresponde ao MASTER_ID."
+    };
+  }
+
+  return {
+    valido: true,
+    motivo: "Identidade do Criador íntegra."
+  };
+}
+
+function isCriador(userId) {
+  const banco = carregarBanco();
+
+  if (!banco.master || !banco.master.criador) {
+    return false;
+  }
+
+  return (
+    banco.master.criador.identidadePermanente === true &&
+    String(banco.master.criador.id) === String(userId)
+  );
+}
+
+function isMaster(userId) {
+  const banco = carregarBanco();
+  return banco.master.id === String(userId);
+}
+
+function isAutenticado(userId) {
+  const banco = carregarBanco();
+  if (isMaster(userId)) return true;
+  const usuario = banco.usuarios[String(userId)];
+  if (!usuario) return false;
+  if (usuario.status === 'bloqueado') return false;
+  return true;
+}
+
+// GERAR LINK DE CONVITE (só MASTER)
+function gerarConvite() {
+  const token = crypto.randomBytes(8).toString('hex');
+  const convites = carregarConvites();
+  
+  const novoConvite = {
+    token: token,
+    criado_em: new Date().toISOString(),
+    usado: false,
+    usado_por: null,
+    ativo: true
+  };
+  
+  convites.convites.push(novoConvite);
+  salvarConvites(convites);
+  
+  return {
+    sucesso: true,
+    token: token,
+    link: `https://t.me/BobMeuAgente2_bot?start=convite_${token}`
+  };
+}
+
+// VALIDAR E USAR CONVITE
+function usarConvite(token, userId, nome) {
+  const convites = carregarConvites();
+  const convite = convites.convites.find(c => c.token === token);
+  
+  if (!convite) {
+    return { sucesso: false, mensagem: '❌ Convite inválido ou expirado.' };
+  }
+  
+  if (!convite.ativo) {
+    return { sucesso: false, mensagem: '❌ Este convite foi desativado.' };
+  }
+  
+  if (convite.usado) {
+    return { sucesso: false, mensagem: '❌ Este convite já foi utilizado.' };
+  }
+  
+  // Gerar senha automática
+  const senha = crypto.randomBytes(4).toString('hex');
+  
+  // Criar usuário
+  const banco = carregarBanco();
+  banco.usuarios[String(userId)] = {
+    id: String(userId),
+    nome: nome,
+    senha: senha,
+    status: 'ativo',
+    criado_em: new Date().toISOString(),
+    primeiro_acesso: true,
+    preferencias: {
+      estilo_resposta: 'normal',
+      usar_emojis: true,
+      idioma: 'pt-BR',
+      tamanho_resposta: 'medio',
+      assuntos_interesse: []
+    }
+  };
+  
+  salvarBanco(banco);
+  
+  // Marcar convite como usado
+  convite.usado = true;
+  convite.usado_por = userId;
+  convite.data_uso = new Date().toISOString();
+  salvarConvites(convites);
+  
+  return {
+    sucesso: true,
+    mensagem: `✅ Bem-vindo(a), ${nome}!`,
+    senha: senha
+  };
+}
+
+// LISTAR CONVITES (só MASTER)
+function listarConvites() {
+  const convites = carregarConvites();
+  return convites.convites;
+}
+
+// DESATIVAR CONVITE (só MASTER)
+function desativarConvite(token) {
+  const convites = carregarConvites();
+  const convite = convites.convites.find(c => c.token === token);
+  
+  if (!convite) {
+    return { sucesso: false, mensagem: '❌ Convite não encontrado.' };
+  }
+  
+  convite.ativo = false;
+  salvarConvites(convites);
+  
+  return { sucesso: true, mensagem: '✅ Convite desativado.' };
+}
+
+// FUNÇÕES EXISTENTES (mantidas)
+function fazerLogin(userId, senha) {
+  const banco = carregarBanco();
+  const usuario = banco.usuarios[String(userId)];
+  
+  if (!usuario) {
+    return { sucesso: false, mensagem: '❌ Usuário não encontrado.' };
+  }
+  
+  if (usuario.status === 'bloqueado') {
+    return { sucesso: false, mensagem: '🚫 Sua conta está bloqueada.' };
+  }
+  
+  if (usuario.senha !== senha) {
+    return { sucesso: false, mensagem: '❌ Senha incorreta.' };
+  }
+  
+  usuario.primeiro_acesso = false;
+  salvarBanco(banco);
+  
+  return { sucesso: true, mensagem: `✅ Bem-vindo(a), ${usuario.nome}!` };
+}
+
+function criarUsuario(userId, nome, senha) {
+  const banco = carregarBanco();
+  
+  if (banco.usuarios[String(userId)]) {
+    return { sucesso: false, mensagem: '❌ Usuário já existe.' };
+  }
+  
+  banco.usuarios[String(userId)] = {
+    id: String(userId),
+    nome: nome,
+    senha: senha,
+    status: 'ativo',
+    criado_em: new Date().toISOString(),
+    primeiro_acesso: false,
+    preferencias: {
+      estilo_resposta: 'normal',
+      usar_emojis: true,
+      idioma: 'pt-BR',
+      tamanho_resposta: 'medio',
+      assuntos_interesse: []
+    }
+  };
+  
+  salvarBanco(banco);
+  return { sucesso: true, mensagem: `✅ Usuário ${nome} criado!` };
+}
+
+function bloquearUsuario(userId) {
+  const banco = carregarBanco();
+  const usuario = banco.usuarios[String(userId)];
+  
+  if (!usuario) {
+    return { sucesso: false, mensagem: '❌ Usuário não encontrado.' };
+  }
+  
+  usuario.status = 'bloqueado';
+  salvarBanco(banco);
+  
+  return { sucesso: true, mensagem: `🚫 Usuário ${usuario.nome} bloqueado.` };
+}
+
+function desbloquearUsuario(userId) {
+  const banco = carregarBanco();
+  const usuario = banco.usuarios[String(userId)];
+  
+  if (!usuario) {
+    return { sucesso: false, mensagem: '❌ Usuário não encontrado.' };
+  }
+  
+  usuario.status = 'ativo';
+  salvarBanco(banco);
+  
+  return { sucesso: true, mensagem: `✅ Usuário ${usuario.nome} desbloqueado.` };
+}
+
+function resetarSenha(userId, novaSenha) {
+  const banco = carregarBanco();
+  const usuario = banco.usuarios[String(userId)];
+  
+  if (!usuario) {
+    return { sucesso: false, mensagem: '❌ Usuário não encontrado.' };
+  }
+  
+  usuario.senha = novaSenha;
+  salvarBanco(banco);
+  
+  return { sucesso: true, mensagem: `✅ Senha alterada para: ${novaSenha}` };
+}
+
+function mudarPropriaSenha(userId, novaSenha) {
+  const banco = carregarBanco();
+  
+  if (isMaster(userId)) {
+    banco.master.senha = novaSenha;
+  } else {
+    const usuario = banco.usuarios[String(userId)];
+    if (!usuario) {
+      return { sucesso: false, mensagem: '❌ Usuário não encontrado.' };
+    }
+    usuario.senha = novaSenha;
+  }
+  
+  salvarBanco(banco);
+  return { sucesso: true, mensagem: '✅ Senha alterada!' };
+}
+
+function listarUsuarios() {
+  const banco = carregarBanco();
+  const lista = [];
+  
+  lista.push({
+    id: banco.master.id,
+    nome: 'MASTER (Você)',
+    status: 'ativo',
+    tipo: 'master'
+  });
+  
+  Object.values(banco.usuarios).forEach(u => {
+    lista.push({
+      id: u.id,
+      nome: u.nome,
+      status: u.status,
+      tipo: 'usuario'
+    });
+  });
+  
+  return lista;
+}
+
+function atualizarPreferencias(userId, novasPreferencias) {
+  const banco = carregarBanco();
+  
+  if (isMaster(userId)) {
+    banco.master.preferencias = { ...banco.master.preferencias, ...novasPreferencias };
+  } else {
+    const usuario = banco.usuarios[String(userId)];
+    if (!usuario) {
+      return { sucesso: false, mensagem: '❌ Usuário não encontrado.' };
+    }
+    usuario.preferencias = { ...usuario.preferencias, ...novasPreferencias };
+  }
+  
+  salvarBanco(banco);
+  return { sucesso: true, mensagem: '✅ Preferências atualizadas!' };
+}
+
+function obterPreferencias(userId) {
+  const banco = carregarBanco();
+  
+  if (isMaster(userId)) {
+    return banco.master.preferencias;
+  }
+  
+  const usuario = banco.usuarios[String(userId)];
+  return usuario ? usuario.preferencias : null;
+}
+
+module.exports = {
+  verificarIntegridadeCriador,
+  isCriador,
+  isMaster,
+  isAutenticado,
+  fazerLogin,
+  criarUsuario,
+  bloquearUsuario,
+  desbloquearUsuario,
+  resetarSenha,
+  mudarPropriaSenha,
+  listarUsuarios,
+  atualizarPreferencias,
+  obterPreferencias,
+  gerarConvite,
+  usarConvite,
+  listarConvites,
+  desativarConvite,
+  carregarBanco,
+  gerarRecuperacaoMaster,
+  validarRecuperacaoMaster,
+  recuperarSenhaMaster
+};

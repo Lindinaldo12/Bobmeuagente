@@ -1,0 +1,251 @@
+const memoria = require("../memoria_v4/gerenciador");
+const planner = require("../planner/planner");
+const conhecimento = require("../conhecimento/gerenciador");
+const orquestrador = require("../orquestrador/orquestrador");
+const responseBuilder = require("../core/responseBuilder");
+const memoriaContexto = require("../memoria/contexto");
+const validadorResposta = require("../core/validadorResposta");
+const detectorAlucinacao = require("../core/detectorAlucinacao");
+const autoavaliador = require("../core/autoavaliador");
+
+// 🌐 NOVO: Detector de necessidade de Internet
+const detectorWeb = require("../core/detectorWeb");
+
+// 🌐 NOVO: Agente responsável pela pesquisa Web
+const pesquisador = require("../agentes/pesquisador");
+
+async function executar(contexto) {
+
+    const idUsuario = String(
+        contexto.usuario?.id || "anonimo"
+    );
+
+    // =====================================================
+    // MEMÓRIA
+    // =====================================================
+
+    contexto.memoria = memoria.carregar(idUsuario);
+    contexto.usuarioMemoria = contexto.memoria;
+
+    const ultimoContexto =
+        memoriaContexto.obter(contexto.usuario?.id);
+
+    const ultimaPergunta =
+        ultimoContexto?.pergunta || "";
+
+    let textoProcessado = contexto.texto;
+
+    if (
+        ultimaPergunta &&
+        /^(resuma|resumo|explique|continue|detalhe|compare|faça um resumo)/i
+            .test(contexto.texto)
+    ) {
+
+        textoProcessado =
+            `Pergunta anterior:
+${ultimaPergunta}
+
+Nova solicitação:
+${contexto.texto}`;
+
+        contexto.texto = textoProcessado;
+    }
+
+    contexto.usuarioMemoria.ultimaMensagem =
+        contexto.texto;
+
+    // =====================================================
+    // 🌐 DETECTOR WEB
+    // =====================================================
+
+    const precisaPesquisarWeb =
+        detectorWeb.precisaWeb(contexto.texto);
+
+    console.log("");
+    console.log("========================================");
+    console.log("🌐 DETECTOR WEB");
+    console.log(
+        "Necessita Internet:",
+        precisaPesquisarWeb ? "SIM" : "NÃO"
+    );
+    console.log("Pergunta:", contexto.texto);
+    console.log("========================================");
+
+    // =====================================================
+    // 🌐 PESQUISA WEB
+    // =====================================================
+
+    if (precisaPesquisarWeb) {
+
+        console.log("");
+        console.log("🌐 ===== INICIANDO PESQUISA WEB =====");
+        console.log("Consulta:", contexto.texto);
+
+        try {
+
+            const resultadoWeb =
+                await pesquisador.executar(contexto.texto);
+
+            if (resultadoWeb) {
+
+                contexto.dadosWeb = resultadoWeb;
+
+                console.log(
+                    "✅ Dados atuais obtidos da Internet."
+                );
+
+            } else {
+
+                contexto.dadosWeb = "";
+
+                console.log(
+                    "⚠️ Nenhum dado Web foi retornado."
+                );
+            }
+
+        } catch (erro) {
+
+            contexto.dadosWeb = "";
+
+            console.error(
+                "❌ Erro na pesquisa Web:",
+                erro.message
+            );
+        }
+
+        console.log("========================================");
+    }
+
+    // =====================================================
+    // BASE DE CONHECIMENTO
+    // =====================================================
+
+    contexto.conhecimento =
+        conhecimento.consultar(contexto.texto);
+
+    console.log("");
+    console.log("===== CONHECIMENTO DO KERNEL =====");
+
+    console.dir(
+        contexto.conhecimento,
+        { depth: null }
+    );
+
+    console.log("==================================");
+
+    // =====================================================
+    // PLANNER
+    // =====================================================
+
+    contexto.plano =
+        planner.criarPlano(contexto.texto);
+
+    console.log(
+        ">>> Entrando no ORQUESTRADOR"
+    );
+
+    // =====================================================
+    // ORQUESTRADOR
+    // =====================================================
+
+    let resposta =
+        await orquestrador.processar(contexto);
+
+    console.log(
+        "<<< Saindo do ORQUESTRADOR"
+    );
+
+    // =====================================================
+    // FALLBACK PARA IA
+    // =====================================================
+
+    if (resposta.status === "ia") {
+
+        resposta.resposta =
+            await contexto.ia.perguntar(
+                contexto.texto,
+                contexto.historico,
+                contexto.usuario
+            );
+    }
+
+    // =====================================================
+    // RESPOSTA FINAL
+    // =====================================================
+
+    let respostaFinal =
+        responseBuilder.construir(
+            resposta,
+            contexto
+        );
+
+    // =====================================================
+    // VALIDAÇÃO
+    // =====================================================
+
+    respostaFinal =
+        validadorResposta.validar(
+            respostaFinal,
+            contexto.conhecimento?.conhecimento || ""
+        );
+
+    // =====================================================
+    // DETECTOR DE ALUCINAÇÃO
+    // =====================================================
+
+    const verificacao =
+        detectorAlucinacao.verificar(
+            respostaFinal,
+            contexto.conhecimento?.conhecimento || ""
+        );
+
+    respostaFinal =
+        verificacao.resposta;
+
+    // =====================================================
+    // AUTOAVALIAÇÃO
+    // =====================================================
+
+    const avaliacao =
+        autoavaliador.avaliar(
+            respostaFinal
+        );
+
+    if (!avaliacao.aprovada) {
+
+        console.log(
+            "===== AUTOAVALIADOR ====="
+        );
+
+        console.log(
+            avaliacao.problemas
+        );
+
+        console.log(
+            "========================="
+        );
+    }
+
+    // =====================================================
+    // MEMÓRIA DO CONTEXTO
+    // =====================================================
+
+    memoriaContexto.salvar(
+        contexto.usuario?.id,
+        {
+            pergunta: contexto.texto,
+            resposta: respostaFinal
+        }
+    );
+
+    memoria.salvar(
+        idUsuario,
+        contexto.usuarioMemoria
+    );
+
+    return respostaFinal;
+}
+
+module.exports = {
+    executar
+};

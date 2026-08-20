@@ -1,33 +1,65 @@
-const { adicionarFato, lerFatos } = require("../../memoria/longoPrazo");
+const memoriaV4 = require("../../memoria_v4/interface");
 
 function registrarComandosMemoria(bot) {
-    // Comando para ensinar algo ao Bob
+
     bot.command("lembrar", async (ctx) => {
-        const texto = ctx.message.text;
+
+        const texto = ctx.message.text || "";
         const fato = texto.replace("/lembrar", "").trim();
-        
+
         if (!fato) {
-            return ctx.reply("⚠️ Use assim: /lembrar Eu me chamo Lindinaldo e tenho dislexia");
+            return ctx.reply(
+                "⚠️ Use assim: /lembrar Eu me chamo Lindinaldo"
+            );
         }
-        
-        const sucesso = adicionarFato(String(ctx.from.id), fato);
+
+        const usuario = memoriaV4.carregarUsuario(
+            String(ctx.from.id)
+        );
+
+        const sucesso = memoriaV4.adicionarFato(
+            usuario,
+            fato
+        );
+
+        memoriaV4.salvarUsuario(usuario);
+
         if (sucesso) {
-            await ctx.reply(`✅ Anotei no meu caderno: "${fato}"`);
+            await ctx.reply(
+                `✅ Anotei na memória: "${fato}"`
+            );
         } else {
-            await ctx.reply("ℹ️ Eu já sabia disso! Não preciso anotar duas vezes.");
+            await ctx.reply(
+                "ℹ️ Eu já sabia disso!"
+            );
         }
     });
 
-    // Comando para ver o que o Bob sabe
     bot.command("meucaderno", async (ctx) => {
-        const fatos = lerFatos(String(ctx.from.id));
+
+        const usuario = memoriaV4.carregarUsuario(
+            String(ctx.from.id)
+        );
+
+        const fatos = usuario.conhecimentos || [];
+
         if (fatos.length === 0) {
-            await ctx.reply("📖 Meu caderno sobre você está vazio. Use /lembrar para me ensinar algo!");
-        } else {
-            const lista = fatos.map((f, i) => `${i + 1}. ${f}`).join("\n");
-            await ctx.reply(`📖 **Meu Caderno sobre você:**\n\n${lista}`);
+            await ctx.reply(
+                "📖 Minha memória sobre você está vazia."
+            );
+            return;
         }
+
+        const lista = fatos
+            .map((fato, i) => `${i + 1}. ${fato}`)
+            .join("\n");
+
+        await ctx.reply(
+            `📖 Memória sobre você:\n\n${lista}`
+        );
     });
 }
 
-module.exports = { registrarComandosMemoria };
+module.exports = {
+    registrarComandosMemoria
+};

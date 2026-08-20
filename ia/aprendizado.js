@@ -1,4 +1,4 @@
-const memoriaV2 = require("../memoria_v2");
+const memoriaV4 = require("../memoria_v4/interface");
 const memoriaInteligente = require("./memoriaInteligente");
 const memoriaSemantica = require("./memoriaSemantica");
 const contexto = require("./contexto");
@@ -22,7 +22,7 @@ function processar(usuario, texto) {
 
         if (usuario) {
             usuario.perfil.nome = nome;
-            memoriaV2.salvarUsuario(usuario);
+            memoriaV4.salvarUsuario(usuario);
         }
 
         return `Prazer em conhecê-lo, ${nome}! Guardei na memória.`;
@@ -39,7 +39,7 @@ function processar(usuario, texto) {
 
         if (cidade && usuario) {
             usuario.perfil.cidade = cidade;
-            memoriaV2.salvarUsuario(usuario);
+            memoriaV4.salvarUsuario(usuario);
 
             return `Perfeito! Guardei que você mora em ${cidade}.`;
         }
@@ -56,7 +56,7 @@ function processar(usuario, texto) {
 
         if (profissao && usuario) {
             usuario.perfil.profissao = profissao;
-            memoriaV2.salvarUsuario(usuario);
+            memoriaV4.salvarUsuario(usuario);
 
             return `Entendido! Guardei que sua profissão é ${profissao}.`;
         }
@@ -78,7 +78,20 @@ function processar(usuario, texto) {
                 projeto
             );
 
-            contexto.definir(usuario.id, "ultimoProjeto", projeto);
+            // ==========================================
+            // ÚLTIMO PROJETO — MEMÓRIA V4 PERSISTENTE
+            // ==========================================
+
+            usuario.perfil.ultimoProjeto = projeto;
+
+            memoriaV4.salvarUsuario(usuario);
+
+            // Compatibilidade com o contexto temporário.
+            contexto.definir(
+                usuario.id,
+                "ultimoProjeto",
+                projeto
+            );
 
             memoriaSemantica.adicionar(
                 usuario.id,
@@ -145,7 +158,7 @@ function processar(usuario, texto) {
                 valor
             );
 
-            memoriaV2.salvarUsuario(usuario);
+            memoriaV4.salvarUsuario(usuario);
 
             return `Perfeito! Guardei que ${config.resposta.toLowerCase()} ${valor}.`;
         }

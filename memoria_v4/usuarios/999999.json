@@ -1,0 +1,139 @@
+{
+  "id": "999999",
+  "criadoEm": "2026-08-16T21:23:13.099Z",
+  "atualizadoEm": "2026-08-17T20:43:43.270Z",
+  "perfil": {
+    "projetos": [
+      "__TESTE_APRENDIZADO_V4__",
+      "__TESTE_NORMALIZACAO_V4__",
+      "__TESTE_EXECUTOR_V4_157__",
+      "__TESTE_PONTE_V4_161__",
+      "__TESTE_KERNEL_MOTOR_163__",
+      "__BOB_KERNEL_REAL_V4_165__",
+      "__BOB_FLUXO_COMPLETO_167__",
+      "__BOB_MEMORIA_LEMBRAR_168__",
+      "__BOB_MEMORIA_PRIORITARIA_173__",
+      "__BOB_ULTIMO_PROJETO_PERSISTENTE_184__"
+    ],
+    "objetivos": [
+      "__TESTE_MEMORIA_INTELIGENTE_V4__",
+      "__TESTE_OBJETIVO_146__"
+    ],
+    "interesses": [],
+    "ultimoProjeto": "__BOB_ULTIMO_PROJETO_PERSISTENTE_184__"
+  },
+  "preferencias": {},
+  "projetos": [],
+  "conhecimentos": [
+    "__TESTE_INTERFACE_V4__"
+  ],
+  "conversas": [
+    {
+      "data": "2026-08-16T23:24:47.106Z",
+      "pergunta": "PERGUNTA_TESTE",
+      "resposta": "RESPOSTA_TESTE"
+    },
+    {
+      "data": "2026-08-16T23:57:40.082Z",
+      "pergunta": "Responda apenas: BOB_V4_END_TO_END_140_OK",
+      "resposta": "BOB_V4_END_TO_END_140_OK"
+    },
+    {
+      "data": "2026-08-17T12:53:31.239Z",
+      "pergunta": "__TESTE_MEMORIA_146__",
+      "resposta": "__RESPOSTA_MEMORIA_146__"
+    },
+    {
+      "data": "2026-08-17T13:23:59.164Z",
+      "pergunta": "Meu projeto se chama __BOB_MEMORIA_REAL_154__",
+      "resposta": "Entendido. Seu projeto se chama __BOB_MEMORIA_REAL_154__. Como posso ajudar com esse projeto? Você gostaria de discutir objetivos, metas ou aspectos técnicos?"
+    },
+    {
+      "data": "2026-08-17T16:32:45.717Z",
+      "pergunta": "Meu projeto é __BOB_FLUXO_COMPLETO_167__",
+      "resposta": "Seu projeto é __BOB_FLUXO_COMPLETO_167__. Este nome sugere que é um projeto relacionado ao fluxo completo, possivelmente envolvendo um sistema ou processo completo. No entanto, sem detalhes adicionais, não posso fornecer informações específicas sobre o que este projeto inclui ou como está estruturado. Você gostaria de fornecer mais detalhes sobre seu projeto?"
+    },
+    {
+      "data": "2026-08-17T16:35:19.998Z",
+      "pergunta": "Meu projeto é __BOB_MEMORIA_LEMBRAR_168__",
+      "resposta": "Seu projeto é __BOB_MEMORIA_LEMBRAR_168__. Pode me dizer mais detalhes sobre ele ou como posso ajudar com relação a isso?"
+    },
+    {
+      "data": "2026-08-17T16:35:20.011Z",
+      "pergunta": "Qual é o nome do meu projeto?",
+      "resposta": "# JavaScript\n\n## O que é\nJavaScript é uma linguagem de programação usada para criar sites interativos e aplicações no servidor (Node.js).\n\n## Sintaxe Básica\n• Variáveis: use 'let' para valores que mudam e 'const' para valores fixos. Evite 'var'.\n• Funções: function nome() {} ou const nome = () => {}\n• Condicionais: if, else, switch\n• Loops: for, while\n\n## Exemplo de Código\nconsole.log('teste');\nEste comando imprime a palavra 'teste' no console. É usado para testar e depurar códigos.\n\n## Boas Práticas\n• Sempre termine as linhas com ponto e vírgula (;).\n• Use nomes de variáveis claros.\n• Comente o código para explicar a lógica."
+    },
+    {
+      "data": "2026-08-17T18:31:50.098Z",
+      "pergunta": "Meu projeto é __BOB_MEMORIA_PRIORITARIA_173__",
+      "resposta": "Seu projeto é __BOB_MEMORIA_PRIORITARIA_173__. Pode me dizer mais sobre ele ou sobre qual aspecto você gostaria de discutir?"
+    },
+    {
+      "data": "2026-08-17T18:31:50.111Z",
+      "pergunta": "Qual é o nome do meu projeto?",
+      "resposta": "# JavaScript\n\n## O que é\nJavaScript é uma linguagem de programação usada para criar sites interativos e aplicações no servidor (Node.js).\n\n## Sintaxe Básica\n• Variáveis: use 'let' para valores que mudam e 'const' para valores fixos. Evite 'var'.\n• Funções: function nome() {} ou const nome = () => {}\n• Condicionais: if, else, switch\n• Loops: for, while\n\n## Exemplo de Código\nconsole.log('teste');\nEste comando imprime a palavra 'teste' no console. É usado para testar e depurar códigos.\n\n## Boas Práticas\n• Sempre termine as linhas com ponto e vírgula (;).\n• Use nomes de variáveis claros.\n• Comente o código para explicar a lógica."
+    },
+    {
+      "data": "2026-08-17T18:36:53.122Z",
+      "pergunta": "Qual é o nome do meu projeto?",
+      "resposta": "# JavaScript\n\n## O que é\nJavaScript é uma linguagem de programação usada para criar sites interativos e aplicações no servidor (Node.js).\n\n## Sintaxe Básica\n• Variáveis: use 'let' para valores que mudam e 'const' para valores fixos. Evite 'var'.\n• Funções: function nome() {} ou const nome = () => {}\n• Condicionais: if, else, switch\n• Loops: for, while\n\n## Exemplo de Código\nconsole.log('teste');\nEste comando imprime a palavra 'teste' no console. É usado para testar e depurar códigos.\n\n## Boas Práticas\n• Sempre termine as linhas com ponto e vírgula (;).\n• Use nomes de variáveis claros.\n• Comente o código para explicar a lógica."
+    },
+    {
+      "data": "2026-08-17T18:38:57.438Z",
+      "pergunta": "Qual é o nome do meu projeto?",
+      "resposta": "# JavaScript\n\n## O que é\nJavaScript é uma linguagem de programação usada para criar sites interativos e aplicações no servidor (Node.js).\n\n## Sintaxe Básica\n• Variáveis: use 'let' para valores que mudam e 'const' para valores fixos. Evite 'var'.\n• Funções: function nome() {} ou const nome = () => {}\n• Condicionais: if, else, switch\n• Loops: for, while\n\n## Exemplo de Código\nconsole.log('teste');\nEste comando imprime a palavra 'teste' no console. É usado para testar e depurar códigos.\n\n## Boas Práticas\n• Sempre termine as linhas com ponto e vírgula (;).\n• Use nomes de variáveis claros.\n• Comente o código para explicar a lógica."
+    },
+    {
+      "data": "2026-08-17T18:42:34.732Z",
+      "pergunta": "Qual é o nome do meu projeto?",
+      "resposta": "Seus projetos são: __TESTE_APRENDIZADO_V4__, __TESTE_NORMALIZACAO_V4__, __TESTE_EXECUTOR_V4_157__, __TESTE_PONTE_V4_161__, __TESTE_KERNEL_MOTOR_163__, __BOB_KERNEL_REAL_V4_165__, __BOB_FLUXO_COMPLETO_167__, __BOB_MEMORIA_LEMBRAR_168__, __BOB_MEMORIA_PRIORITARIA_173__."
+    },
+    {
+      "data": "2026-08-17T19:43:18.122Z",
+      "pergunta": "Que projeto é esse?",
+      "resposta": "Os projetos mencionados são \"__TESTE_APRENDIZADO_V4__\", \"__TESTE_NORMALIZACAO_V4__\", \"__TESTE_EXECUTOR_V4_157__\", \"__TESTE_PONTE_V4_161__\", \"__TESTE_KERNEL_MOTOR_163__\", \"__BOB_KERNEL_REAL_V4_165__\", \"__BOB_FLUXO_COMPLETO_167__\", \"__BOB_MEMORIA_LEMBRAR_168__\", \"__BOB_MEMORIA_PRIORITARIA_173__\" e \"__BOB_ULTIMO_PROJETO_PERSISTENTE_184__\". Esses projetos parecem estar relacionados ao desenvolvimento de sistemas inteligentes ou de aprendizado de máquina, mas sem mais informações, não posso detalhar mais sobre cada um."
+    },
+    {
+      "data": "2026-08-17T19:51:36.856Z",
+      "pergunta": "Que projeto é esse?",
+      "resposta": "Você está falando do projeto __BOB_ULTIMO_PROJETO_PERSISTENTE_184__."
+    },
+    {
+      "data": "2026-08-17T20:11:23.780Z",
+      "pergunta": "Que projeto é esse?",
+      "resposta": "Você está falando do projeto __BOB_ULTIMO_PROJETO_PERSISTENTE_184__."
+    },
+    {
+      "data": "2026-08-17T20:15:24.474Z",
+      "pergunta": "Explique o que é JavaScript.",
+      "resposta": "# JavaScript\n\n## O que é\nJavaScript é uma linguagem de programação usada para criar sites interativos e aplicações no servidor (Node.js).\n\n## Sintaxe Básica\n• Variáveis: use 'let' para valores que mudam e 'const' para valores fixos. Evite 'var'.\n• Funções: function nome() {} ou const nome = () => {}\n• Condicionais: if, else, switch\n• Loops: for, while\n\n## Exemplo de Código\nconsole.log('teste');\nEste comando imprime a palavra 'teste' no console. É usado para testar e depurar códigos.\n\n## Boas Práticas\n• Sempre termine as linhas com ponto e vírgula (;).\n• Use nomes de variáveis claros.\n• Comente o código para explicar a lógica."
+    },
+    {
+      "data": "2026-08-17T20:17:32.306Z",
+      "pergunta": "Qual é a origem histórica da palavra Zorvântico?",
+      "resposta": "# JavaScript\n\n## O que é\nJavaScript é uma linguagem de programação usada para criar sites interativos e aplicações no servidor (Node.js).\n\n## Sintaxe Básica\n• Variáveis: use 'let' para valores que mudam e 'const' para valores fixos. Evite 'var'.\n• Funções: function nome() {} ou const nome = () => {}\n• Condicionais: if, else, switch\n• Loops: for, while\n\n## Exemplo de Código\nconsole.log('teste');\nEste comando imprime a palavra 'teste' no console. É usado para testar e depurar códigos.\n\n## Boas Práticas\n• Sempre termine as linhas com ponto e vírgula (;).\n• Use nomes de variáveis claros.\n• Comente o código para explicar a lógica."
+    },
+    {
+      "data": "2026-08-17T20:37:25.965Z",
+      "pergunta": "Qual é a origem histórica da palavra Zorvântico?",
+      "resposta": "Não encontrei informações específicas sobre a origem histórica da palavra \"zorvântico\". A palavra não parece ser uma palavra comum em línguas conhecidas e não encontrei registros claros sobre sua origem. É possível que seja uma palavra inventada ou específica de um contexto muito restrito. Se você tiver mais contexto sobre onde encontrou essa palavra, pode ajudar a pesquisar melhor."
+    },
+    {
+      "data": "2026-08-17T20:42:23.721Z",
+      "pergunta": "Que projeto é esse?",
+      "resposta": "Você está falando do projeto __BOB_ULTIMO_PROJETO_PERSISTENTE_184__."
+    },
+    {
+      "data": "2026-08-17T20:42:49.773Z",
+      "pergunta": "Explique o que é JavaScript.",
+      "resposta": "# JavaScript\n\n## O que é\nJavaScript é uma linguagem de programação usada para criar sites interativos e aplicações no servidor (Node.js).\n\n## Sintaxe Básica\n• Variáveis: use 'let' para valores que mudam e 'const' para valores fixos. Evite 'var'.\n• Funções: function nome() {} ou const nome = () => {}\n• Condicionais: if, else, switch\n• Loops: for, while\n\n## Exemplo de Código\nconsole.log('teste');\nEste comando imprime a palavra 'teste' no console. É usado para testar e depurar códigos.\n\n## Boas Práticas\n• Sempre termine as linhas com ponto e vírgula (;).\n• Use nomes de variáveis claros.\n• Comente o código para explicar a lógica."
+    },
+    {
+      "data": "2026-08-17T20:43:43.268Z",
+      "pergunta": "Qual é a origem histórica da palavra Zorvântico?",
+      "resposta": "Não encontrei informações específicas sobre a origem histórica da palavra \"Zorvântico\". A palavra não parece ser uma palavra comum em nenhum idioma conhecido e não está listada em fontes de etimologia padrão. É possível que seja uma palavra criada ou usada em um contexto específico. Se você tiver mais contexto sobre onde encontrou essa palavra, pode ajudar a investigar sua origem."
+    }
+  ],
+  "resumo": "",
+  "ultimaMensagem": "Qual é a origem histórica da palavra Zorvântico?"
+}

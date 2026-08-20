@@ -3,6 +3,134 @@ const conhecimento = require("../conhecimento/motor");
 const planner = require("../planner/planner");
 const executorPlanner = require("../planner/executor");
 
+// ==========================================
+// MEMÓRIA PESSOAL V4 — PRIORIDADE
+// ==========================================
+
+function responderMemoriaPessoal(contexto, pergunta) {
+
+    const memoria =
+        contexto?.usuarioMemoria ||
+        contexto?.memoria ||
+        {};
+
+    const perfil =
+        memoria.perfil || {};
+
+    const projetos =
+        Array.isArray(perfil.projetos)
+            ? perfil.projetos
+            : [];
+
+    const objetivos =
+        Array.isArray(perfil.objetivos)
+            ? perfil.objetivos
+            : [];
+
+    const interesses =
+        Array.isArray(perfil.interesses)
+            ? perfil.interesses
+            : [];
+
+    // ==========================================
+    // ÚLTIMO PROJETO — MEMÓRIA V4 PERSISTENTE
+    // ==========================================
+
+    const ultimoProjeto =
+        perfil.ultimoProjeto ||
+        null;
+
+    const texto =
+        String(pergunta || "")
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+
+    // ==========================================
+    // ÚLTIMO PROJETO MENCIONADO
+    // ==========================================
+
+    const perguntaUltimoProjeto =
+        texto.includes("que projeto e esse") ||
+        texto.includes("qual e esse projeto") ||
+        texto === "esse projeto" ||
+        texto === "ele";
+
+    if (perguntaUltimoProjeto && ultimoProjeto) {
+        return `Você está falando do projeto ${ultimoProjeto}.`;
+    }
+
+    // ==========================================
+    // PROJETOS
+    // ==========================================
+
+    const perguntaProjeto =
+        texto.includes("qual e o meu projeto") ||
+        texto.includes("qual e meu projeto") ||
+        texto.includes("quais sao meus projetos") ||
+        texto.includes("quais meus projetos") ||
+        texto.includes("nome do meu projeto") ||
+        texto.includes("nome dos meus projetos");
+
+    if (perguntaProjeto) {
+
+        if (projetos.length === 0) {
+            return "Você ainda não me contou quais são seus projetos.";
+        }
+
+        if (projetos.length === 1) {
+            return `Seu projeto é ${projetos[0]}.`;
+        }
+
+        return `Seus projetos são: ${projetos.join(", ")}.`;
+    }
+
+    // ==========================================
+    // OBJETIVOS
+    // ==========================================
+
+    const perguntaObjetivo =
+        texto.includes("qual e o meu objetivo") ||
+        texto.includes("qual e meu objetivo") ||
+        texto.includes("quais sao meus objetivos") ||
+        texto.includes("quais meus objetivos");
+
+    if (perguntaObjetivo) {
+
+        if (objetivos.length === 0) {
+            return "Você ainda não me contou quais são seus objetivos.";
+        }
+
+        if (objetivos.length === 1) {
+            return `Seu objetivo é ${objetivos[0]}.`;
+        }
+
+        return `Seus objetivos são: ${objetivos.join(", ")}.`;
+    }
+
+    // ==========================================
+    // INTERESSES
+    // ==========================================
+
+    const perguntaInteresses =
+        texto.includes("quais sao meus interesses") ||
+        texto.includes("quais meus interesses") ||
+        texto.includes("o que eu gosto");
+
+    if (perguntaInteresses) {
+
+        if (interesses.length === 0) {
+            return "Você ainda não me contou quais são seus interesses.";
+        }
+
+        return `Seus interesses são: ${interesses.join(", ")}.`;
+    }
+
+    return null;
+}
+
+
+
 async function processar(contexto) {
 
     const texto = String(contexto.texto || "");
@@ -158,6 +286,73 @@ INSTRUÇÕES:
         console.log("===== AGENTE SELECIONADO =====");
         console.log(agente);
         console.log("==============================");
+
+        // ==========================================
+        // MEMÓRIA PESSOAL V4 — PRIMEIRA PRIORIDADE
+        // ==========================================
+
+        console.log("");
+        console.log("===== 5D.8.176 — MEMÓRIA RECEBIDA PELO ORQUESTRADOR =====");
+
+        console.log(
+            "usuarioMemoria existe:",
+            Boolean(contexto?.usuarioMemoria)
+        );
+
+        console.log(
+            "memoria existe:",
+            Boolean(contexto?.memoria)
+        );
+
+        console.log(
+            "perfil existe:",
+            Boolean(
+                contexto?.usuarioMemoria?.perfil
+            )
+        );
+
+        console.log(
+            "projetos recebidos:",
+            JSON.stringify(
+                contexto?.usuarioMemoria?.perfil?.projetos || [],
+                null,
+                2
+            )
+        );
+
+        console.log(
+            "pergunta recebida:",
+            linha
+        );
+
+        const respostaMemoria =
+            responderMemoriaPessoal(
+                contexto,
+                linha
+            );
+
+        console.log(
+            "respostaMemoria:",
+            respostaMemoria
+        );
+
+        if (respostaMemoria) {
+
+            console.log("");
+            console.log(
+                "🧠 MEMÓRIA V4: RESPOSTA PESSOAL ENCONTRADA"
+            );
+
+            respostas.push(
+                respostaMemoria
+            );
+
+            continue;
+        }
+
+        // ==========================================
+        // BASE DE CONHECIMENTO
+        // ==========================================
 
         const docs =
             conhecimento.buscar(linha);

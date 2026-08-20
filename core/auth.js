@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -45,6 +47,854 @@ function salvarBanco(banco) {
 
 function salvarConvites(convites) {
   fs.writeFileSync(CONVITES_PATH, JSON.stringify(convites, null, 2));
+}
+
+
+// ==========================================================
+// RECUPERAÇÃO SEGURA DA CONTA MASTER
+// ==========================================================
+
+function gerarRecuperacaoMaster() {
+
+  const segredo = String(
+    process.env.MASTER_RECOVERY_SECRET || ""
+  ).trim();
+
+  if (segredo.length < 64) {
+    return {
+      sucesso: false,
+      mensagem: "❌ Segredo de recuperação não configurado."
+    };
+  }
+
+  const codigo = crypto
+    .randomBytes(24)
+    .toString("hex");
+
+  const hash = crypto
+    .createHmac("sha256", segredo)
+    .update(codigo)
+    .digest("hex");
+
+  const expiraEm =
+    Date.now() + (15 * 60 * 1000);
+
+  const banco = carregarBanco();
+
+  banco.master.recuperacao = {
+    hash,
+    expiraEm,
+    usado: false,
+    criadoEm: Date.now()
+  };
+
+  salvarBanco(banco);
+
+  return {
+    sucesso: true,
+    codigo,
+    hash,
+    expiraEm
+  };
+}
+
+
+function validarRecuperacaoMaster(
+  codigo,
+  hashEsperado,
+  expiraEm
+) {
+
+  const segredo = String(
+    process.env.MASTER_RECOVERY_SECRET || ""
+  ).trim();
+
+  if (segredo.length < 64) {
+    return {
+      sucesso: false,
+      mensagem: "❌ Recuperação MASTER não configurada."
+    };
+  }
+
+  if (!codigo || !hashEsperado || !expiraEm) {
+    return {
+      sucesso: false,
+      mensagem: "❌ Dados de recuperação incompletos."
+    };
+  }
+
+  const banco = carregarBanco();
+  const recuperacao = banco.master?.recuperacao;
+
+  if (!recuperacao) {
+    return {
+      sucesso: false,
+      mensagem: "❌ Nenhuma recuperação MASTER ativa."
+    };
+  }
+
+  if (recuperacao.usado) {
+    return {
+      sucesso: false,
+      mensagem: "🔒 Este código de recuperação já foi utilizado."
+    };
+  }
+
+  if (
+    String(recuperacao.hash) !== String(hashEsperado) ||
+    Number(recuperacao.expiraEm) !== Number(expiraEm)
+  ) {
+    return {
+      sucesso: false,
+      mensagem: "❌ Dados de recuperação não correspondem à recuperação ativa."
+    };
+  }
+
+  if (Date.now() > Number(recuperacao.expiraEm)) {
+    recuperacao.usado = true;
+    salvarBanco(banco);
+
+    return {
+      sucesso: false,
+      mensagem: "⏱️ Código de recuperação expirado."
+    };
+  }
+
+  const hashRecebido = crypto
+    .createHmac("sha256", segredo)
+    .update(String(codigo))
+    .digest("hex");
+
+  const esperado = String(recuperacao.hash);
+
+  if (
+    hashRecebido.length !== esperado.length ||
+    !crypto.timingSafeEqual(
+      Buffer.from(hashRecebido),
+      Buffer.from(esperado)
+    )
+  ) {
+    return {
+      sucesso: false,
+      mensagem: "❌ Código de recuperação inválido."
+    };
+  }
+
+  // 🔒 CONSUMO DO CÓDIGO
+  recuperacao.usado = true;
+  recuperacao.usadoEm = Date.now();
+
+  salvarBanco(banco);
+
+  return {
+    sucesso: true,
+    mensagem: "✅ Recuperação MASTER validada e código consumido."
+  };
+}
+
+
+
+function recuperarSenhaMaster(
+  codigo,
+  hashEsperado,
+  expiraEm,
+  novaSenha
+) {
+
+  const senha = String(novaSenha || "");
+
+  if (senha.length < 12) {
+    return {
+      sucesso: false,
+      mensagem: "❌ A nova senha MASTER deve possuir pelo menos 12 caracteres."
+    };
+  }
+
+  const validacao = validarRecuperacaoMaster(
+    codigo,
+    hashEsperado,
+    expiraEm
+  );
+
+  if (!validacao.sucesso) {
+    return validacao;
+  }
+
+  const banco = carregarBanco();
+
+  if (!banco.master) {
+    return {
+      sucesso: false,
+      mensagem: "❌ Conta MASTER não encontrada."
+    };
+  }
+
+  banco.master.senha = senha;
+  banco.master.senhaAlteradaEm = new Date().toISOString();
+
+  salvarBanco(banco);
+
+  return {
+    sucesso: true,
+    mensagem: "✅ Senha MASTER recuperada e alterada com sucesso."
+  };
+}
+
+function obterIdentidadeCentral() {
+  const banco = carregarBanco();
+
+  if (!banco.master || !banco.master.criador) {
+    return null;
+  }
+
+  if (!banco.master.criador.identidadeCentralId) {
+    banco.master.criador.identidadeCentralId =
+      "bob-criador-" + require("crypto").randomBytes(24).toString("hex");
+
+    salvarBanco(banco);
+  }
+
+  return {
+    id: banco.master.criador.identidadeCentralId,
+    tipo: "criador",
+    permanente: true
+  };
+}
+
+function obterIdentidadeCanal(canal, canalId) {
+  const identidadeCentral =
+    obterIdentidadeCentral();
+
+  if (!identidadeCentral) {
+    return null;
+  }
+
+  const banco = carregarBanco();
+
+  if (!banco.master || !banco.master.criador) {
+    return null;
+  }
+
+  const criador = banco.master.criador;
+
+  if (!criador.canais) {
+    criador.canais = {};
+  }
+
+  const nomeCanal = String(canal || "").trim().toLowerCase();
+  const idCanal = String(canalId || "").trim();
+
+  if (!nomeCanal || !idCanal) {
+    return null;
+  }
+
+  if (
+    nomeCanal === "telegram" &&
+    idCanal === String(banco.master.id)
+  ) {
+    criador.canais.telegram = {
+      id: idCanal,
+      identidadeCentralId: identidadeCentral.id,
+      autorizado: true
+    };
+
+    salvarBanco(banco);
+
+    return {
+      canal: "telegram",
+      id: idCanal,
+      identidadeCentralId: identidadeCentral.id,
+      tipo: "criador",
+      autorizado: true
+    };
+  }
+
+  return {
+    canal: nomeCanal,
+    id: idCanal,
+    identidadeCentralId: null,
+    tipo: "desconhecido",
+    autorizado: false
+  };
+}
+
+function gerarCodigoVinculacao(canal) {
+  const crypto = require("crypto");
+
+  const nomeCanal =
+    String(canal || "").trim().toLowerCase();
+
+  if (!nomeCanal) {
+    return null;
+  }
+
+  const codigo =
+    crypto.randomBytes(32).toString("hex");
+
+  return {
+    canal: nomeCanal,
+    codigo,
+    criadoEm: new Date().toISOString(),
+    usado: false
+  };
+}
+
+function salvarCodigoVinculacao(codigoVinculacao) {
+  const banco = carregarBanco();
+
+  if (!banco.master || !banco.master.criador) {
+    return false;
+  }
+
+  if (!banco.master.criador.codigosVinculacao) {
+    banco.master.criador.codigosVinculacao = [];
+  }
+
+  banco.master.criador.codigosVinculacao.push(
+    codigoVinculacao
+  );
+
+  salvarBanco(banco);
+
+  return true;
+}
+
+function validarCodigoVinculacao(codigo) {
+  const banco = carregarBanco();
+
+  if (
+    !banco.master ||
+    !banco.master.criador ||
+    !banco.master.criador.codigosVinculacao
+  ) {
+    return {
+      valido: false,
+      motivo: "Nenhum código de vinculação disponível."
+    };
+  }
+
+  const codigoTexto =
+    String(codigo || "").trim();
+
+  if (!codigoTexto) {
+    return {
+      valido: false,
+      motivo: "Código não informado."
+    };
+  }
+
+  const registro =
+    banco.master.criador.codigosVinculacao.find(
+      item => item.codigo === codigoTexto
+    );
+
+  if (!registro) {
+    return {
+      valido: false,
+      motivo: "Código de vinculação inválido."
+    };
+  }
+
+  if (registro.usado === true) {
+    return {
+      valido: false,
+      motivo: "Código de vinculação já utilizado."
+    };
+  }
+
+  return {
+    valido: true,
+    motivo: "Código de vinculação válido.",
+    canal: registro.canal,
+    codigo: registro.codigo,
+    criadoEm: registro.criadoEm
+  };
+}
+
+function usarCodigoVinculacao(codigo) {
+  const banco = carregarBanco();
+
+  if (
+    !banco.master ||
+    !banco.master.criador ||
+    !banco.master.criador.codigosVinculacao
+  ) {
+    return {
+      sucesso: false,
+      motivo: "Nenhum código de vinculação disponível."
+    };
+  }
+
+  const codigoTexto =
+    String(codigo || "").trim();
+
+  if (!codigoTexto) {
+    return {
+      sucesso: false,
+      motivo: "Código não informado."
+    };
+  }
+
+  const registro =
+    banco.master.criador.codigosVinculacao.find(
+      item => item.codigo === codigoTexto
+    );
+
+  if (!registro) {
+    return {
+      sucesso: false,
+      motivo: "Código de vinculação inválido."
+    };
+  }
+
+  if (registro.usado === true) {
+    return {
+      sucesso: false,
+      motivo: "Código de vinculação já utilizado."
+    };
+  }
+
+  registro.usado = true;
+  registro.usadoEm = new Date().toISOString();
+
+  salvarBanco(banco);
+
+  return {
+    sucesso: true,
+    motivo: "Código de vinculação utilizado com sucesso.",
+    canal: registro.canal,
+    codigo: registro.codigo,
+    usadoEm: registro.usadoEm
+  };
+}
+
+function vincularCanalComCodigo(canal, canalId, codigo) {
+  const banco = carregarBanco();
+
+  if (
+    !banco.master ||
+    !banco.master.criador
+  ) {
+    return {
+      sucesso: false,
+      motivo: "Identidade do Criador não encontrada."
+    };
+  }
+
+  const nomeCanal =
+    String(canal || "").trim().toLowerCase();
+
+  const idCanal =
+    String(canalId || "").trim();
+
+  const codigoTexto =
+    String(codigo || "").trim();
+
+  if (!nomeCanal || !idCanal || !codigoTexto) {
+    return {
+      sucesso: false,
+      motivo: "Canal, ID ou código não informado."
+    };
+  }
+
+  const validacao =
+    validarCodigoVinculacao(codigoTexto);
+
+  if (!validacao.valido) {
+    return {
+      sucesso: false,
+      motivo: validacao.motivo
+    };
+  }
+
+  if (validacao.canal !== nomeCanal) {
+    return {
+      sucesso: false,
+      motivo: "Código não pertence a este canal."
+    };
+  }
+
+  const identidadeCentral =
+    obterIdentidadeCentral();
+
+  if (!identidadeCentral) {
+    return {
+      sucesso: false,
+      motivo: "Identidade Central não disponível."
+    };
+  }
+
+  const registro =
+    banco.master.criador.codigosVinculacao.find(
+      item => item.codigo === codigoTexto
+    );
+
+  if (!registro || registro.usado === true) {
+    return {
+      sucesso: false,
+      motivo: "Código de vinculação já utilizado."
+    };
+  }
+
+  if (!banco.master.criador.canais) {
+    banco.master.criador.canais = {};
+  }
+
+  const vinculoExistente =
+    banco.master.criador.canais[nomeCanal];
+
+  if (
+    vinculoExistente &&
+    vinculoExistente.autorizado === true &&
+    String(vinculoExistente.id) !== idCanal
+  ) {
+    return {
+      sucesso: false,
+      motivo: "Canal já possui um vínculo autorizado."
+    };
+  }
+
+  registro.usado = true;
+  registro.usadoEm = new Date().toISOString();
+
+  banco.master.criador.canais[nomeCanal] = {
+    id: idCanal,
+    identidadeCentralId: identidadeCentral.id,
+    autorizado: true,
+    vinculadoEm: registro.usadoEm
+  };
+
+  salvarBanco(banco);
+
+  return {
+    sucesso: true,
+    canal: nomeCanal,
+    id: idCanal,
+    identidadeCentralId: identidadeCentral.id,
+    tipo: "criador",
+    autorizado: true
+  };
+}
+
+function gerarAssinaturaIdentidadeCentral() {
+  const crypto = require("crypto");
+
+  const segredo =
+    process.env.BOB_IDENTITY_SECRET;
+
+  if (!segredo) {
+    throw new Error(
+      "BOB_IDENTITY_SECRET não configurado."
+    );
+  }
+
+  const banco =
+    carregarBanco();
+
+  if (
+    !banco.master ||
+    !banco.master.criador
+  ) {
+    throw new Error(
+      "Identidade do Criador não encontrada."
+    );
+  }
+
+  const criador =
+    banco.master.criador;
+
+  const id =
+    criador.identidadeCentralId;
+
+  const tipo =
+    criador.tipo;
+
+  const permanente =
+    criador.permanente;
+
+  if (!id) {
+    throw new Error(
+      "Identidade Central sem ID."
+    );
+  }
+
+  if (typeof tipo !== "string") {
+    throw new Error(
+      "Tipo do Criador não está definido no banco."
+    );
+  }
+
+  if (typeof permanente !== "boolean") {
+    throw new Error(
+      "Campo permanente do Criador não está definido no banco."
+    );
+  }
+
+  const dados =
+    JSON.stringify({
+      id,
+      tipo,
+      permanente
+    });
+
+  return crypto
+    .createHmac("sha256", segredo)
+    .update(dados, "utf8")
+    .digest("hex");
+}
+
+
+function verificarAssinaturaIdentidadeCentral(assinaturaEsperada) {
+  const crypto = require("crypto");
+
+  const segredo =
+    process.env.BOB_IDENTITY_SECRET;
+
+  if (!segredo) {
+    return {
+      valido: false,
+      motivo: "BOB_IDENTITY_SECRET não configurado."
+    };
+  }
+
+  const identidade =
+    obterIdentidadeCentral();
+
+  if (!identidade) {
+    return {
+      valido: false,
+      motivo: "Identidade Central não encontrada."
+    };
+  }
+
+  const assinaturaAtual =
+    gerarAssinaturaIdentidadeCentral();
+
+  const esperada =
+    String(assinaturaEsperada || "").trim();
+
+  if (
+    !/^[0-9a-f]{64}$/i.test(esperada)
+  ) {
+    return {
+      valido: false,
+      motivo: "Assinatura esperada inválida."
+    };
+  }
+
+  const a =
+    Buffer.from(assinaturaAtual, "hex");
+
+  const b =
+    Buffer.from(esperada, "hex");
+
+  const igual =
+    a.length === b.length &&
+    crypto.timingSafeEqual(a, b);
+
+  return {
+    valido: igual,
+    motivo: igual
+      ? "Assinatura da Identidade Central válida."
+      : "Assinatura da Identidade Central inválida."
+  };
+}
+
+function registrarAssinaturaIdentidadeCentral() {
+  const banco = carregarBanco();
+
+  if (!banco.master || !banco.master.criador) {
+    return {
+      sucesso: false,
+      motivo: "Identidade do Criador não encontrada."
+    };
+  }
+
+  if (
+    banco.master.criador.assinaturaIdentidadeCentral
+  ) {
+    return {
+      sucesso: false,
+      motivo: "Assinatura Central já registrada.",
+      assinatura:
+        banco.master.criador.assinaturaIdentidadeCentral
+    };
+  }
+
+  const assinatura =
+    gerarAssinaturaIdentidadeCentral();
+
+  banco.master.criador.assinaturaIdentidadeCentral =
+    assinatura;
+
+  salvarBanco(banco);
+
+  return {
+    sucesso: true,
+    motivo: "Assinatura Central registrada.",
+    assinatura
+  };
+}
+
+function verificarIntegridadeAssinaturaIdentidadeCentral() {
+  const banco = carregarBanco();
+
+  if (!banco.master || !banco.master.criador) {
+    return {
+      valido: false,
+      motivo: "Identidade do Criador não encontrada."
+    };
+  }
+
+  const assinaturaOficial =
+    banco.master.criador.assinaturaIdentidadeCentral;
+
+  if (
+    typeof assinaturaOficial !== "string" ||
+    !/^[0-9a-f]{64}$/i.test(assinaturaOficial)
+  ) {
+    return {
+      valido: false,
+      motivo: "Assinatura oficial ausente ou inválida."
+    };
+  }
+
+  const verificacao =
+    verificarAssinaturaIdentidadeCentral(
+      assinaturaOficial
+    );
+
+  return {
+    valido: verificacao.valido,
+    motivo: verificacao.motivo
+  };
+}
+
+function verificarIntegridadeCriador() {
+  const banco = carregarBanco();
+
+  if (!banco.master) {
+    return {
+      valido: false,
+      motivo: "Conta MASTER não encontrada."
+    };
+  }
+
+  if (!banco.master.criador) {
+    return {
+      valido: false,
+      motivo: "Identidade do Criador não encontrada."
+    };
+  }
+
+  const criador = banco.master.criador;
+
+  if (criador.identidadePermanente !== true) {
+    return {
+      valido: false,
+      motivo: "Identidade do Criador não está marcada como permanente."
+    };
+  }
+
+  if (String(criador.id) !== String(banco.master.id)) {
+    return {
+      valido: false,
+      motivo: "ID do Criador não corresponde ao ID MASTER."
+    };
+  }
+
+  const masterEnv = String(
+    process.env.MASTER_ID || ""
+  ).trim();
+
+  if (!masterEnv) {
+    return {
+      valido: false,
+      motivo: "MASTER_ID não está configurado."
+    };
+  }
+
+  if (String(banco.master.id) !== masterEnv) {
+    return {
+      valido: false,
+      motivo: "ID MASTER do banco não corresponde ao MASTER_ID."
+    };
+  }
+
+  return {
+    valido: true,
+    motivo: "Identidade do Criador íntegra."
+  };
+}
+
+function obterIdentidadeUsuario(userId) {
+  const id = String(userId);
+  const banco = carregarBanco();
+
+  if (!banco.master) {
+    return {
+      id,
+      tipo: "desconhecido",
+      identidadePermanente: false,
+      autoridade: "nenhuma"
+    };
+  }
+
+  if (isCriador(id)) {
+    return {
+      id,
+      tipo: "criador",
+      identidadePermanente: true,
+      autoridade: "master"
+    };
+  }
+
+  if (isMaster(id)) {
+    return {
+      id,
+      tipo: "master",
+      identidadePermanente: false,
+      autoridade: "master"
+    };
+  }
+
+  const usuario = banco.usuarios[id];
+
+  if (!usuario) {
+    return {
+      id,
+      tipo: "desconhecido",
+      identidadePermanente: false,
+      autoridade: "nenhuma"
+    };
+  }
+
+  return {
+    id,
+    tipo: "usuario",
+    identidadePermanente: false,
+    autoridade: "usuario",
+    status: usuario.status || "ativo"
+  };
+}
+
+function isCriador(userId) {
+  const id = String(userId);
+
+  const integridade =
+    verificarIntegridadeCriador();
+
+  if (!integridade.valido) {
+    return false;
+  }
+
+  const banco = carregarBanco();
+
+  return (
+    String(banco.master.criador.id) === id &&
+    String(banco.master.id) === id &&
+    String(process.env.MASTER_ID || "").trim() === id
+  );
 }
 
 function isMaster(userId) {
@@ -319,6 +1169,21 @@ function obterPreferencias(userId) {
 }
 
 module.exports = {
+  salvarBanco,
+  verificarIntegridadeAssinaturaIdentidadeCentral,
+  registrarAssinaturaIdentidadeCentral,
+  verificarAssinaturaIdentidadeCentral,
+  gerarAssinaturaIdentidadeCentral,
+  vincularCanalComCodigo,
+  usarCodigoVinculacao,
+  validarCodigoVinculacao,
+  salvarCodigoVinculacao,
+  gerarCodigoVinculacao,
+  obterIdentidadeCanal,
+  obterIdentidadeCentral,
+  obterIdentidadeUsuario,
+  verificarIntegridadeCriador,
+  isCriador,
   isMaster,
   isAutenticado,
   fazerLogin,
@@ -334,5 +1199,8 @@ module.exports = {
   usarConvite,
   listarConvites,
   desativarConvite,
-  carregarBanco
+  carregarBanco,
+  gerarRecuperacaoMaster,
+  validarRecuperacaoMaster,
+  recuperarSenhaMaster
 };
