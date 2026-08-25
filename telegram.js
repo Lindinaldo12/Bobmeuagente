@@ -1,31 +1,35 @@
 const TelegramBot = require('node-telegram-bot-api');
-const { extrairTextoDeArquivo } = require('./ia/leitorArquivos');
-const fs = require('fs');
 
-if (!fs.existsSync('./temp')) fs.mkdirSync('./temp');
+const token = process.env.TELEGRAM_TOKEN;
 
-const token = process.env.TELEGRAM_BOT_TOKEN;
-const bot = new TelegramBot(token, { polling: false });
-
-async function processarArquivo(msg) {
-    if (!msg.document && !msg.photo) return msg;
-    
-    const chatId = msg.chat.id;
-    await bot.sendMessage(chatId, "👁️ Bob abrindo os olhos... Lendo...");
-    
-    let fileId = msg.document ? msg.document.file_id : msg.photo[msg.photo.length - 1].file_id;
-    let mimeType = msg.document ? (msg.document.mime_type || 'text/plain') : 'image/jpeg';
-    
-    const filePath = await bot.downloadFile(fileId, './temp');
-    const textoExtraido = await extrairTextoDeArquivo(filePath, mimeType);
-    
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    
-    if (!textoExtraido.startsWith("❌")) {
-        const legenda = msg.caption || "Analise detalhadamente.";
-        msg.text = `[ARQUIVO ENVIADO]\nInstrução: ${legenda}\n\nCONTEÚDO:\n${textoExtraido}`;
-    }
-    return msg;
+if (!token) {
+    console.error('❌ Token do Telegram não encontrado!');
+    console.error('   Configure TELEGRAM_TOKEN no arquivo .env');
+    process.exit(1);
 }
 
-module.exports = { bot, processarArquivo };
+const bot = new TelegramBot(token, { polling: true });
+
+console.log('✅ telegram.js carregado com sucesso');
+
+bot.on('message', (msg) => {
+    const chatId = msg.chat.id;
+    const text = msg.text;
+
+    if (!text) return;
+
+    console.log(`📨 Mensagem recebida de ${msg.from.first_name}: ${text}`);
+
+    if (text === '/start') {
+        bot.sendMessage(chatId, '👋 Olá! Eu sou o Bob AI X. Como posso te ajudar?');
+        return;
+    }
+
+    bot.sendMessage(chatId, `🤖 Você disse: "${text}"\n\n(Integração com IA em desenvolvimento)`);
+});
+
+bot.on('polling_error', (error) => {
+    console.error('❌ Erro no polling do Telegram:', error.message);
+});
+
+module.exports = bot;

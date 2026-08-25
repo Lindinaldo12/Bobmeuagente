@@ -1,24 +1,2 @@
-# Dependências (reinstaláveis com npm install)
 node_modules/
-
-# Arquivos temporários
-temp/
-*.tmp
-
-# Backups locais (muito pesados para o Git)
-backups/
-
-# Variáveis de ambiente (SENHAS - NUNCA subir para o GitHub!)
 .env
-
-# Logs
-*.log
-
-# Sistema operacional
-.DS_Store
-Thumbs.db
-
-# Pasta de conhecimento local (livros espíritas - muito pesados)
-conhecimento/espirita/*.txt
-conhecimento/espirita/*.pdf
-memoria/sessoes/

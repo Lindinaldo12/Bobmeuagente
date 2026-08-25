@@ -1,15 +1,39 @@
-const { bot, processarArquivo } = require('./telegram');
+require('dotenv').config(); // Carrega variáveis do .env
 
-console.log("🚀 Bob AI X Iniciado.");
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-bot.on('message', async (msg) => {
-    // 1. Processa arquivo se houver, ou mantém a msg original
-    const msgProcessada = await processarArquivo(msg);
+console.log('🚀 Bob AI X Iniciado.');
+console.log('==================================');
+console.log('Bob v2.0.0');
+console.log('Bob Core');
+console.log('==================================');
 
-    // 2. AQUI ENTRA O SEU CÓDIGO DO KERNEL ORIGINAL
-    // (Onde você chama a IA, busca na web, etc)
-    console.log("🧠 Mensagem recebida para processar:", msgProcessada.text ? msgProcessada.text.substring(0,50) : "Sem texto");
-    
-    // -> COLOQUE A CHAMADA DA SUA FUNÇÃO DE IA AQUI:
-    // exemplo: processarNoKernel(msgProcessada);
+console.log('✅ Configuração carregada.');
+
+// Iniciar servidor web (mantém o processo vivo no Render/Termux)
+app.get('/', (req, res) => {
+    res.send('🤖 Bob AI X está rodando!');
+});
+
+app.listen(PORT, () => {
+    console.log(`✅ Servidor Web iniciado na porta ${PORT}`);
+});
+
+// Iniciar Telegram
+try {
+    require('./telegram');
+    console.log('✅ Core inicializado.');
+} catch (error) {
+    console.error('❌ Erro ao iniciar o Telegram:', error.message);
+}
+
+// Evitar que o processo caia por erros não tratados
+process.on('uncaughtException', (err) => {
+    console.error('❌ Uncaught Exception:', err.message);
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.error('❌ Unhandled Rejection:', reason);
 });
