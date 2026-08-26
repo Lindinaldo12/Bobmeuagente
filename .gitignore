@@ -31,3 +31,12 @@ memoria/sessoes/
 *env_backup*
 backups/**/.env*
 backups/**/env_backup*
+
+# Segurança - arquivos de ambiente e segredos
+.env
+.en
+.env.*
+*.env
+*env_backup*
+backups/**/.env*
+backups/**/env_backup*
