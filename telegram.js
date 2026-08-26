@@ -1,9 +1,8 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
-const Groq = require('groq-sdk');
 
 const token = process.env.TELEGRAM_TOKEN || process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN;
-const groqApiKey = process.env.GROQ_API_KEY;
+const apiKey = process.env.OPENROUTER_API_KEY || process.env.API_KEY || process.env.GROQ_API_KEY;
 
 if (!token) {
     console.error('❌ TELEGRAM_TOKEN não configurado no Render!');
@@ -12,52 +11,66 @@ if (!token) {
 
 const bot = new TelegramBot(token, { polling: true });
 
-let groq = null;
-if (groqApiKey) {
-    groq = new Groq({ apiKey: groqApiKey });
-    console.log('⚡ IA Groq conectada com sucesso!');
+if (apiKey) {
+    console.log('⚡ Conectado à OpenRouter com sucesso!');
 } else {
-    console.log('⚠️ GROQ_API_KEY ausente nas variáveis do Render.');
+    console.log('⚠️ Chave de API ausente nas variáveis do Render.');
 }
 
-// Resposta de Texto (Llama 3.1 8B Instant)
-async function responderTextoGroq(text) {
-    const modelosText = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile'];
+// Função para chamar a IA no OpenRouter com fallback automático de modelos
+async function chamarOpenRouter(messages, eFoto = false) {
+    if (!apiKey) {
+        throw new Error('Chave de API não configurada no Render (OPENROUTER_API_KEY ou API_KEY).');
+    }
+
+    // Modelos gratuitos e estáveis no OpenRouter
+    const modelosTexto = [
+        'google/gemini-2.0-flash-exp:free',
+        'meta-llama/llama-3.3-70b-instruct:free',
+        'deepseek/deepseek-r1:free',
+        'openrouter/auto'
+    ];
+
+    const modelosVisao = [
+        'google/gemini-2.0-flash-exp:free',
+        'meta-llama/llama-3.2-11b-vision-instruct:free',
+        'qwen/qwen-2-vl-7b-instruct:free'
+    ];
+
+    const modelos = eFoto ? modelosVisao : modelosTexto;
     let ultimoErro = null;
 
-    for (const model of modelosText) {
+    for (const model of modelos) {
         try {
-            const completion = await groq.chat.completions.create({
-                messages: [
-                    { role: 'system', content: 'Você é o Bob AI X, um assistente virtual inteligente, útil e amigável criado para ajudar o Lindinaldo.' },
-                    { role: 'user', content: text }
-                ],
-                model: model,
+            const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'HTTP-Referer': 'https://bobmeuagente.onrender.com',
+                    'X-Title': 'Bob AI X',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: messages
+                })
             });
-            return completion.choices[0]?.message?.content || 'Sem resposta.';
+
+            const data = await res.json();
+
+            if (res.ok && data.choices && data.choices[0]?.message?.content) {
+                return data.choices[0].message.content;
+            } else if (data.error) {
+                console.log(`⚠️ Modelo OpenRouter ${model} falhou: ${data.error.message || JSON.stringify(data.error)}. Testando próximo...`);
+                ultimoErro = new Error(data.error.message || 'Erro no modelo');
+            }
         } catch (err) {
+            console.log(`⚠️ Erro na requisição do modelo ${model}: ${err.message}`);
             ultimoErro = err;
-            console.log(`⚠️ Modelo ${model} falhou: ${err.message}`);
         }
     }
-    throw ultimoErro;
-}
 
-// Análise de Foto em Base64 (Llama 3.2 11B Vision)
-async function analisarFotoGroq(prompt, base64DataUrl) {
-    const completion = await groq.chat.completions.create({
-        messages: [
-            {
-                role: 'user',
-                content: [
-                    { type: 'text', text: prompt },
-                    { type: 'image_url', image_url: { url: base64DataUrl } }
-                ]
-            }
-        ],
-        model: 'llama-3.2-11b-vision-preview',
-    });
-    return completion.choices[0]?.message?.content || 'Não consegui analisar a imagem.';
+    throw ultimoErro || new Error('Todos os modelos de IA falharam.');
 }
 
 // 💬 RESPONDER TEXTOS
@@ -68,18 +81,17 @@ bot.on('message', async (msg) => {
     const text = msg.text;
 
     if (text === '/start') {
-        bot.sendMessage(chatId, '👋 Olá Lindinaldo! Eu sou o **Bob AI X**, turbinado com a IA ultra-rápida da **Groq**!⚡\n\nEnvie qualquer texto ou foto para conversarmos!', { parse_mode: 'Markdown' });
-        return;
-    }
-
-    if (!groq) {
-        bot.sendMessage(chatId, '⚠️ Chave `GROQ_API_KEY` não configurada no Render.');
+        bot.sendMessage(chatId, '👋 Olá Lindinaldo! Eu sou o **Bob AI X**.\n\nEnvie qualquer texto ou foto para conversarmos!', { parse_mode: 'Markdown' });
         return;
     }
 
     try {
         bot.sendChatAction(chatId, 'typing');
-        const resposta = await responderTextoGroq(text);
+        const messages = [
+            { role: 'system', content: 'Você é o Bob AI X, um assistente virtual inteligente e útil criado para ajudar o Lindinaldo.' },
+            { role: 'user', content: text }
+        ];
+        const resposta = await chamarOpenRouter(messages, false);
         bot.sendMessage(chatId, resposta);
     } catch (error) {
         console.error('❌ Erro no texto:', error.message);
@@ -90,12 +102,7 @@ bot.on('message', async (msg) => {
 // 📸 ANALISAR FOTOS
 bot.on('photo', async (msg) => {
     const chatId = msg.chat.id;
-    const prompt = msg.caption || "Analise e descreva esta imagem em detalhes. Se houver texto, leia e resuma o conteúdo de forma simples.";
-
-    if (!groq) {
-        bot.sendMessage(chatId, '⚠️ Chave `GROQ_API_KEY` não configurada no Render.');
-        return;
-    }
+    const prompt = msg.caption || "Analise esta imagem em detalhes. Se houver qualquer texto ou documento, leia e resuma o conteúdo de forma clara e objetiva.";
 
     try {
         bot.sendMessage(chatId, '👀 *Analisando a foto...*', { parse_mode: 'Markdown' });
@@ -104,13 +111,23 @@ bot.on('photo', async (msg) => {
         const photo = msg.photo[msg.photo.length - 1];
         const fileLink = await bot.getFileLink(photo.file_id);
 
-        // Baixa a imagem e converte para Data URI (Base64)
-        const response = await fetch(fileLink);
-        const arrayBuffer = await response.arrayBuffer();
+        // Converte a imagem do Telegram em Data URI Base64
+        const imgRes = await fetch(fileLink);
+        const arrayBuffer = await imgRes.arrayBuffer();
         const base64String = Buffer.from(arrayBuffer).toString('base64');
-        const base64DataUrl = `data:image/jpeg;base64,${base64String}`;
+        const dataUrl = `data:image/jpeg;base64,${base64String}`;
 
-        const resposta = await analisarFotoGroq(prompt, base64DataUrl);
+        const messages = [
+            {
+                role: 'user',
+                content: [
+                    { type: 'text', text: prompt },
+                    { type: 'image_url', image_url: { url: dataUrl } }
+                ]
+            }
+        ];
+
+        const resposta = await chamarOpenRouter(messages, true);
         bot.sendMessage(chatId, resposta);
 
     } catch (error) {
