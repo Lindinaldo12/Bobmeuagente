@@ -6,6 +6,7 @@ const auth = require("../../core/auth");
 const detectorWeb = require("../../core/detectorWeb");
 const pesquisador = require("../../agentes/pesquisador");
 const kernel = require("../../kernel/kernel");
+const { responderIdentidade } = require("../../core/respostasIdentidade");
 
 const {
     registrarComandosAdmin
@@ -70,6 +71,13 @@ function criarBot() {
             await ctx.reply(
                 "🔒 Você precisa fazer login primeiro."
             );
+            return;
+        }
+
+        // Respostas críticas de identidade não dependem do modelo de IA
+        const respostaIdentidade = responderIdentidade(pergunta, usuarioId);
+        if (respostaIdentidade) {
+            await ctx.reply(respostaIdentidade);
             return;
         }
 
