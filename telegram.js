@@ -1,12 +1,9 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 
-// Aceita o token do Telegram
 const token = process.env.TELEGRAM_TOKEN || process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN;
-
-// Aceita a chave da IA (seja GEMINI_API_KEY ou API_KEY)
-const geminiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+const groqApiKey = process.env.GROQ_API_KEY;
 
 if (!token) {
     console.error('❌ TELEGRAM_TOKEN não configurado no Render!');
@@ -15,25 +12,12 @@ if (!token) {
 
 const bot = new TelegramBot(token, { polling: true });
 
-let aiReady = false;
-if (geminiKey) {
-    aiReady = true;
-    console.log('🧠 Chave da IA identificada e ativa!');
+let groq = null;
+if (groqApiKey) {
+    groq = new Groq({ apiKey: groqApiKey });
+    console.log('⚡ IA Groq (Llama 3.3) conectada com sucesso!');
 } else {
-    console.log('⚠️ GEMINI_API_KEY ausente no Render.');
-}
-
-async function processarIA(prompt, imagePart = null) {
-    if (!aiReady) {
-        throw new Error('Chave GEMINI_API_KEY ausente nas variáveis do Render.');
-    }
-
-    const genAI = new GoogleGenerativeAI(geminiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-    const input = imagePart ? [prompt, imagePart] : prompt;
-    const res = await model.generateContent(input);
-    return res.response.text();
+    console.log('⚠️ GROQ_API_KEY ausente nas variáveis de ambiente do Render.');
 }
 
 // 💬 RESPONDER TEXTOS
@@ -44,24 +28,44 @@ bot.on('message', async (msg) => {
     const text = msg.text;
 
     if (text === '/start') {
-        bot.sendMessage(chatId, '👋 Olá Lindinaldo! Eu sou o **Bob AI X**.\n\nEnvie qualquer pergunta por texto ou **mande uma foto** para eu analisar!', { parse_mode: 'Markdown' });
+        bot.sendMessage(chatId, '👋 Olá Lindinaldo! Eu sou o **Bob AI X**, agora turbinado com a IA **Llama 3 (Groq)**!⚡\n\nEnvie qualquer texto ou foto para conversarmos!', { parse_mode: 'Markdown' });
+        return;
+    }
+
+    if (!groq) {
+        bot.sendMessage(chatId, '⚠️ Chave `GROQ_API_KEY` não configurada no Render.');
         return;
     }
 
     try {
         bot.sendChatAction(chatId, 'typing');
-        const resposta = await processarIA(text);
+
+        const completion = await groq.chat.completions.create({
+            messages: [
+                { role: 'system', content: 'Você é o Bob AI X, um assistente virtual inteligente, útil e amigável.' },
+                { role: 'user', content: text }
+            ],
+            model: 'llama-3.3-70b-versatile',
+        });
+
+        const resposta = completion.choices[0]?.message?.content || 'Sem resposta.';
         bot.sendMessage(chatId, resposta);
+
     } catch (error) {
         console.error('❌ Erro no texto:', error.message);
-        bot.sendMessage(chatId, `⚠️ ${error.message}`);
+        bot.sendMessage(chatId, `⚠️ Erro na IA: ${error.message}`);
     }
 });
 
 // 📸 ANALISAR FOTOS
 bot.on('photo', async (msg) => {
     const chatId = msg.chat.id;
-    const prompt = msg.caption || "Analise esta imagem em detalhes. Se houver qualquer texto, documento ou anotação, leia e resuma o conteúdo de forma clara e simples.";
+    const prompt = msg.caption || "Analise e descreva esta imagem em detalhes. Se houver texto, leia e resuma o conteúdo.";
+
+    if (!groq) {
+        bot.sendMessage(chatId, '⚠️ Chave `GROQ_API_KEY` não configurada no Render.');
+        return;
+    }
 
     try {
         bot.sendMessage(chatId, '👀 *Analisando a foto...*', { parse_mode: 'Markdown' });
@@ -70,23 +74,25 @@ bot.on('photo', async (msg) => {
         const photo = msg.photo[msg.photo.length - 1];
         const fileLink = await bot.getFileLink(photo.file_id);
 
-        const response = await fetch(fileLink);
-        const arrayBuffer = await response.arrayBuffer();
-        const base64Data = Buffer.from(arrayBuffer).toString("base64");
+        const completion = await groq.chat.completions.create({
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: prompt },
+                        { type: 'image_url', image_url: { url: fileLink } }
+                    ]
+                }
+            ],
+            model: 'llama-3.2-11b-vision-preview',
+        });
 
-        const imagePart = {
-            inlineData: {
-                data: base64Data,
-                mimeType: "image/jpeg"
-            }
-        };
-
-        const resposta = await processarIA(prompt, imagePart);
+        const resposta = completion.choices[0]?.message?.content || 'Não consegui analisar a imagem.';
         bot.sendMessage(chatId, resposta);
 
     } catch (error) {
         console.error('❌ Erro na foto:', error.message);
-        bot.sendMessage(chatId, `⚠️ ${error.message}`);
+        bot.sendMessage(chatId, `⚠️ Erro na análise da foto: ${error.message}`);
     }
 });
 
