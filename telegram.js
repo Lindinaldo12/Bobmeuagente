@@ -2,11 +2,12 @@ require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-const token = process.env.TELEGRAM_TOKEN;
-const geminiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+// Tenta buscar o token de vários nomes possíveis
+const token = process.env.TELEGRAM_TOKEN || process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN;
+const geminiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.OPENROUTER_API_KEY;
 
 if (!token) {
-    console.error('❌ TELEGRAM_TOKEN não configurado!');
+    console.error('❌ TELEGRAM_TOKEN não configurado! Verifique a aba Environment no Render.');
     process.exit(1);
 }
 
@@ -25,6 +26,8 @@ if (geminiKey) {
     } catch (e) {
         console.error('❌ Erro na IA:', e.message);
     }
+} else {
+    console.log('⚠️ Chave da IA não configurada.');
 }
 
 // 💬 RESPONDER TEXTOS
@@ -57,7 +60,6 @@ bot.on('message', async (msg) => {
 // 📸 ANALISAR FOTOS INSTANTANEAMENTE
 bot.on('photo', async (msg) => {
     const chatId = msg.chat.id;
-    // Se você colocou legenda na foto, usa ela. Se não, usa um comando padrão:
     const prompt = msg.caption || "Analise esta imagem em detalhes. Se houver qualquer texto, documento, livro ou anotação, leia e resuma o conteúdo de forma clara e simples.";
 
     if (!aiModel) {
@@ -69,11 +71,9 @@ bot.on('photo', async (msg) => {
         bot.sendMessage(chatId, '👀 *Analisando a foto...*', { parse_mode: 'Markdown' });
         bot.sendChatAction(chatId, 'typing');
 
-        // Pega a foto de maior qualidade
         const photo = msg.photo[msg.photo.length - 1];
         const fileLink = await bot.getFileLink(photo.file_id);
 
-        // Baixa a foto e converte para leitura da IA
         const response = await fetch(fileLink);
         const arrayBuffer = await response.arrayBuffer();
         const base64Data = Buffer.from(arrayBuffer).toString("base64");
@@ -85,7 +85,6 @@ bot.on('photo', async (msg) => {
             }
         };
 
-        // Envia para a IA
         const result = await aiModel.generateContent([prompt, imagePart]);
         const replyText = result.response.text();
 
