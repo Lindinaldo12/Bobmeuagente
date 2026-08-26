@@ -1,3 +1,4 @@
+const { enviarEmBlocos } = require("../../core/envioBlocos");
 const { Bot, session } = require("grammy");
 
 const config = require("../../config/config");
@@ -214,7 +215,7 @@ INSTRUÇÕES:
 
             console.log("📤 Enviando resposta ao Telegram...");
 
-            await ctx.reply(textoResposta);
+            await enviarEmBlocos(ctx, textoResposta);
 
             console.log("✅ Resposta enviada.");
 
