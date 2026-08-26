@@ -42,8 +42,27 @@ async function subirTelegram() {
     return null;
   }
 
+  // Aceita apelidos comuns do token (compatibilidade com config antiga do Render)
   if (!process.env.TELEGRAM_BOT_TOKEN) {
-    throw new Error("TELEGRAM_BOT_TOKEN ausente no ambiente");
+    const alias = [
+      process.env.TELEGRAM_TOKEN,
+      process.env.BOT_TOKEN,
+      process.env.TG_TOKEN
+    ].find((v) => v && String(v).trim());
+    if (alias) {
+      process.env.TELEGRAM_BOT_TOKEN = String(alias).trim();
+      console.log("🔁 Token encontrado via variavel alternativa");
+    }
+  }
+
+  if (!process.env.TELEGRAM_BOT_TOKEN) {
+    console.error("");
+    console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    console.error("!! TELEGRAM_BOT_TOKEN AUSENTE NO RENDER !!");
+    console.error("!! Bob rodara APENAS HTTP (modo degradado) !!");
+    console.error("!! Configure em: Render > Environment    !!");
+    console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    return null;
   }
 
   const bot = criarBot();
