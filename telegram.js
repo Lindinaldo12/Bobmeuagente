@@ -2,8 +2,11 @@ require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
+// Aceita o token do Telegram
 const token = process.env.TELEGRAM_TOKEN || process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN;
-const geminiKey = process.env.GEMINI_API_KEY;
+
+// Aceita a chave da IA (seja GEMINI_API_KEY ou API_KEY)
+const geminiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
 
 if (!token) {
     console.error('❌ TELEGRAM_TOKEN não configurado no Render!');
@@ -12,18 +15,17 @@ if (!token) {
 
 const bot = new TelegramBot(token, { polling: true });
 
-// Valida se a chave é do Google Gemini (deve começar com AIza)
 let aiReady = false;
-if (geminiKey && geminiKey.startsWith('AIza')) {
+if (geminiKey) {
     aiReady = true;
-    console.log('🧠 Chave válida do Google Gemini conectada!');
+    console.log('🧠 Chave da IA identificada e ativa!');
 } else {
-    console.log('⚠️ GEMINI_API_KEY inválida ou ausente no Render. A chave DEVE começar com "AIza".');
+    console.log('⚠️ GEMINI_API_KEY ausente no Render.');
 }
 
 async function processarIA(prompt, imagePart = null) {
     if (!aiReady) {
-        throw new Error('Chave GEMINI_API_KEY inválida no Render. Crie uma chave gratuita no site: aistudio.google.com/app/apikey e salve nas variáveis do Render.');
+        throw new Error('Chave GEMINI_API_KEY ausente nas variáveis do Render.');
     }
 
     const genAI = new GoogleGenerativeAI(geminiKey);
