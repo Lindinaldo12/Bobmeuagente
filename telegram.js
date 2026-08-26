@@ -20,9 +20,9 @@ if (groqApiKey) {
     console.log('⚠️ GROQ_API_KEY ausente nas variáveis do Render.');
 }
 
-// Função inteligente que testa modelos de texto da Groq em sequência
+// Resposta de Texto (Llama 3.1 8B Instant)
 async function responderTextoGroq(text) {
-    const modelosText = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'llama3-8b-8192', 'mixtral-8x7b-32768'];
+    const modelosText = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile'];
     let ultimoErro = null;
 
     for (const model of modelosText) {
@@ -37,38 +37,27 @@ async function responderTextoGroq(text) {
             return completion.choices[0]?.message?.content || 'Sem resposta.';
         } catch (err) {
             ultimoErro = err;
-            console.log(`⚠️ Modelo ${model} falhou: ${err.message}. Testando próximo...`);
+            console.log(`⚠️ Modelo ${model} falhou: ${err.message}`);
         }
     }
     throw ultimoErro;
 }
 
-// Função inteligente para analisar foto com Groq
-async function analisarFotoGroq(prompt, fileLink) {
-    const modelosVisao = ['llama-3.2-11b-vision-preview', 'llama-3.2-90b-vision-preview'];
-    let ultimoErro = null;
-
-    for (const model of modelosVisao) {
-        try {
-            const completion = await groq.chat.completions.create({
-                messages: [
-                    {
-                        role: 'user',
-                        content: [
-                            { type: 'text', text: prompt },
-                            { type: 'image_url', image_url: { url: fileLink } }
-                        ]
-                    }
-                ],
-                model: model,
-            });
-            return completion.choices[0]?.message?.content || 'Não consegui analisar a imagem.';
-        } catch (err) {
-            ultimoErro = err;
-            console.log(`⚠️ Modelo de visão ${model} falhou: ${err.message}. Testando próximo...`);
-        }
-    }
-    throw ultimoErro;
+// Análise de Foto em Base64 (Llama 3.2 11B Vision)
+async function analisarFotoGroq(prompt, base64DataUrl) {
+    const completion = await groq.chat.completions.create({
+        messages: [
+            {
+                role: 'user',
+                content: [
+                    { type: 'text', text: prompt },
+                    { type: 'image_url', image_url: { url: base64DataUrl } }
+                ]
+            }
+        ],
+        model: 'llama-3.2-11b-vision-preview',
+    });
+    return completion.choices[0]?.message?.content || 'Não consegui analisar a imagem.';
 }
 
 // 💬 RESPONDER TEXTOS
@@ -115,7 +104,13 @@ bot.on('photo', async (msg) => {
         const photo = msg.photo[msg.photo.length - 1];
         const fileLink = await bot.getFileLink(photo.file_id);
 
-        const resposta = await analisarFotoGroq(prompt, fileLink);
+        // Baixa a imagem e converte para Data URI (Base64)
+        const response = await fetch(fileLink);
+        const arrayBuffer = await response.arrayBuffer();
+        const base64String = Buffer.from(arrayBuffer).toString('base64');
+        const base64DataUrl = `data:image/jpeg;base64,${base64String}`;
+
+        const resposta = await analisarFotoGroq(prompt, base64DataUrl);
         bot.sendMessage(chatId, resposta);
 
     } catch (error) {
