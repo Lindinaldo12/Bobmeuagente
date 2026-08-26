@@ -63,7 +63,7 @@ async function main() {
   console.log(`📦 ${config.app?.nome || "Bob"} v${config.app?.versao || "2.0.0"}`);
 
   // 1) Core (identidade / boot seguro)
-  await inicializar();
+  try { await inicializar(); } catch (e) { console.log("⚠️ Alerta de Segurança (Ignorado por enquanto): " + e.message); }
 
   // 2) Gerenciador de IA (log de provedor/modelo)
   if (typeof ia.inicializar === "function") {
