@@ -17,27 +17,60 @@ if (apiKey) {
     console.log('⚠️ Chave de API ausente nas variáveis do Render.');
 }
 
-// Função para chamar a IA no OpenRouter com fallback automático de modelos
+// Busca dinamicamente os modelos GRATUITOS e ATIVOS na OpenRouter
+async function obterModelosGratuitosAtivos(eFoto = false) {
+    try {
+        const res = await fetch('https://openrouter.ai/api/v1/models');
+        if (res.ok) {
+            const json = await res.json();
+            const todosModelos = json.data || [];
+
+            // Filtra apenas modelos que contêm ':free' no ID ou preço zero
+            const gratis = todosModelos.filter(m => 
+                m.id.endsWith(':free') || (m.pricing && m.pricing.prompt === '0')
+            );
+
+            if (eFoto) {
+                // Filtra modelos com capacidade de visão/foto
+                const visao = gratis.filter(m => 
+                    (m.architecture && m.architecture.modality && m.architecture.modality.includes('image')) ||
+                    m.id.includes('vision') || 
+                    m.id.includes('vl') || 
+                    m.id.includes('gemini')
+                ).map(m => m.id);
+
+                if (visao.length > 0) return visao;
+            } else {
+                const texto = gratis.map(m => m.id);
+                if (texto.length > 0) return texto;
+            }
+        }
+    } catch (e) {
+        console.log('⚠️ Falha ao buscar lista dinâmica da OpenRouter, usando fallback.');
+    }
+
+    // Lista fallback de segurança
+    if (eFoto) {
+        return [
+            'google/gemini-2.0-flash-lite-preview-02-05:free',
+            'meta-llama/llama-3.2-11b-vision-instruct:free'
+        ];
+    } else {
+        return [
+            'meta-llama/llama-3.1-8b-instruct:free',
+            'qwen/qwen-2.5-72b-instruct:free',
+            'google/gemini-2.0-flash-lite-preview-02-05:free'
+        ];
+    }
+}
+
+// Função para enviar mensagem à IA
 async function chamarOpenRouter(messages, eFoto = false) {
     if (!apiKey) {
         throw new Error('Chave de API não configurada no Render (OPENROUTER_API_KEY ou API_KEY).');
     }
 
-    // Modelos gratuitos e estáveis no OpenRouter
-    const modelosTexto = [
-        'google/gemini-2.0-flash-exp:free',
-        'meta-llama/llama-3.3-70b-instruct:free',
-        'deepseek/deepseek-r1:free',
-        'openrouter/auto'
-    ];
-
-    const modelosVisao = [
-        'google/gemini-2.0-flash-exp:free',
-        'meta-llama/llama-3.2-11b-vision-instruct:free',
-        'qwen/qwen-2-vl-7b-instruct:free'
-    ];
-
-    const modelos = eFoto ? modelosVisao : modelosTexto;
+    const modelos = await obterModelosGratuitosAtivos(eFoto);
     let ultimoErro = null;
 
     for (const model of modelos) {
@@ -59,18 +92,19 @@ async function chamarOpenRouter(messages, eFoto = false) {
             const data = await res.json();
 
             if (res.ok && data.choices && data.choices[0]?.message?.content) {
+                console.log(`✅ Resposta gerada com o modelo ativo: ${model}`);
                 return data.choices[0].message.content;
             } else if (data.error) {
-                console.log(`⚠️ Modelo OpenRouter ${model} falhou: ${data.error.message || JSON.stringify(data.error)}. Testando próximo...`);
+                console.log(`⚠️ Modelo ${model} indisponível: ${data.error.message || 'Erro'}. Testando próximo...`);
                 ultimoErro = new Error(data.error.message || 'Erro no modelo');
             }
         } catch (err) {
-            console.log(`⚠️ Erro na requisição do modelo ${model}: ${err.message}`);
+            console.log(`⚠️ Erro de conexão no modelo ${model}: ${err.message}`);
             ultimoErro = err;
         }
     }
 
-    throw ultimoErro || new Error('Todos os modelos de IA falharam.');
+    throw ultimoErro || new Error('Nenhum modelo gratuito disponível no momento.');
 }
 
 // 💬 RESPONDER TEXTOS
@@ -111,7 +145,6 @@ bot.on('photo', async (msg) => {
         const photo = msg.photo[msg.photo.length - 1];
         const fileLink = await bot.getFileLink(photo.file_id);
 
-        // Converte a imagem do Telegram em Data URI Base64
         const imgRes = await fetch(fileLink);
         const arrayBuffer = await imgRes.arrayBuffer();
         const base64String = Buffer.from(arrayBuffer).toString('base64');
