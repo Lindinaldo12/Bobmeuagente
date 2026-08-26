@@ -2,14 +2,8 @@ require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// Busca o token do Telegram
 const token = process.env.TELEGRAM_TOKEN || process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN;
-
-// Busca a chave do Gemini (garante que seja uma chave do Google AIStudio AIza...)
-let geminiKey = process.env.GEMINI_API_KEY;
-if (!geminiKey && process.env.API_KEY && process.env.API_KEY.startsWith('AIza')) {
-    geminiKey = process.env.API_KEY;
-}
+const geminiKey = process.env.GEMINI_API_KEY;
 
 if (!token) {
     console.error('❌ TELEGRAM_TOKEN não configurado no Render!');
@@ -18,36 +12,26 @@ if (!token) {
 
 const bot = new TelegramBot(token, { polling: true });
 
-if (geminiKey) {
-    console.log('🧠 Chave da IA Google Gemini identificada!');
+// Valida se a chave é do Google Gemini (deve começar com AIza)
+let aiReady = false;
+if (geminiKey && geminiKey.startsWith('AIza')) {
+    aiReady = true;
+    console.log('🧠 Chave válida do Google Gemini conectada!');
 } else {
-    console.log('⚠️ GEMINI_API_KEY ausente ou inválida nas variáveis do Render.');
+    console.log('⚠️ GEMINI_API_KEY inválida ou ausente no Render. A chave DEVE começar com "AIza".');
 }
 
-// Função inteligente que testa modelos em sequência para evitar erros 404
-async function gerarComIA(prompt, imagePart = null) {
-    if (!geminiKey) {
-        throw new Error('Chave GEMINI_API_KEY não encontrada no Render. Crie uma em aistudio.google.com');
+async function processarIA(prompt, imagePart = null) {
+    if (!aiReady) {
+        throw new Error('Chave GEMINI_API_KEY inválida no Render. Crie uma chave gratuita no site: aistudio.google.com/app/apikey e salve nas variáveis do Render.');
     }
 
     const genAI = new GoogleGenerativeAI(geminiKey);
-    const modelos = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    let ultimoErro = null;
-
-    for (const mod of modelos) {
-        try {
-            const model = genAI.getGenerativeModel({ model: mod });
-            const input = imagePart ? [prompt, imagePart] : prompt;
-            const res = await model.generateContent(input);
-            return res.response.text();
-        } catch (err) {
-            ultimoErro = err;
-            console.log(`⚠️ Tentativa no modelo ${mod} falhou: ${err.message}. Testando próximo...`);
-        }
-    }
-
-    throw new Error(`Falha ao conectar com o Gemini (${ultimoErro ? ultimoErro.message : 'Erro desconhecido'})`);
+    const input = imagePart ? [prompt, imagePart] : prompt;
+    const res = await model.generateContent(input);
+    return res.response.text();
 }
 
 // 💬 RESPONDER TEXTOS
@@ -64,7 +48,7 @@ bot.on('message', async (msg) => {
 
     try {
         bot.sendChatAction(chatId, 'typing');
-        const resposta = await gerarComIA(text);
+        const resposta = await processarIA(text);
         bot.sendMessage(chatId, resposta);
     } catch (error) {
         console.error('❌ Erro no texto:', error.message);
@@ -75,7 +59,7 @@ bot.on('message', async (msg) => {
 // 📸 ANALISAR FOTOS
 bot.on('photo', async (msg) => {
     const chatId = msg.chat.id;
-    const prompt = msg.caption || "Analise esta imagem em detalhes. Se houver qualquer texto, documento ou anotação, leia e resuma o conteúdo de forma clara.";
+    const prompt = msg.caption || "Analise esta imagem em detalhes. Se houver qualquer texto, documento ou anotação, leia e resuma o conteúdo de forma clara e simples.";
 
     try {
         bot.sendMessage(chatId, '👀 *Analisando a foto...*', { parse_mode: 'Markdown' });
@@ -95,7 +79,7 @@ bot.on('photo', async (msg) => {
             }
         };
 
-        const resposta = await gerarComIA(prompt, imagePart);
+        const resposta = await processarIA(prompt, imagePart);
         bot.sendMessage(chatId, resposta);
 
     } catch (error) {
