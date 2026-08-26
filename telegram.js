@@ -2,70 +2,80 @@ require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// Tenta buscar o token de vários nomes possíveis
+// Busca o token do Telegram
 const token = process.env.TELEGRAM_TOKEN || process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN;
-const geminiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.OPENROUTER_API_KEY;
+
+// Busca a chave do Gemini (garante que seja uma chave do Google AIStudio AIza...)
+let geminiKey = process.env.GEMINI_API_KEY;
+if (!geminiKey && process.env.API_KEY && process.env.API_KEY.startsWith('AIza')) {
+    geminiKey = process.env.API_KEY;
+}
 
 if (!token) {
-    console.error('❌ TELEGRAM_TOKEN não configurado! Verifique a aba Environment no Render.');
+    console.error('❌ TELEGRAM_TOKEN não configurado no Render!');
     process.exit(1);
 }
 
 const bot = new TelegramBot(token, { polling: true });
 
-// Inicializa a IA Gemini (visão de fotos)
-let aiModel = null;
 if (geminiKey) {
-    try {
-        const genAI = new GoogleGenerativeAI(geminiKey);
-        aiModel = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
-            systemInstruction: 'Você é o Bob AI X. Quando receber fotos, analise tudo detalhadamente. Se houver texto na imagem, leia e transcreva em linguagem simples e objetiva.'
-        });
-        console.log('🧠 IA com Visão de Imagens ativada!');
-    } catch (e) {
-        console.error('❌ Erro na IA:', e.message);
-    }
+    console.log('🧠 Chave da IA Google Gemini identificada!');
 } else {
-    console.log('⚠️ Chave da IA não configurada.');
+    console.log('⚠️ GEMINI_API_KEY ausente ou inválida nas variáveis do Render.');
+}
+
+// Função inteligente que testa modelos em sequência para evitar erros 404
+async function gerarComIA(prompt, imagePart = null) {
+    if (!geminiKey) {
+        throw new Error('Chave GEMINI_API_KEY não encontrada no Render. Crie uma em aistudio.google.com');
+    }
+
+    const genAI = new GoogleGenerativeAI(geminiKey);
+    const modelos = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+
+    let ultimoErro = null;
+
+    for (const mod of modelos) {
+        try {
+            const model = genAI.getGenerativeModel({ model: mod });
+            const input = imagePart ? [prompt, imagePart] : prompt;
+            const res = await model.generateContent(input);
+            return res.response.text();
+        } catch (err) {
+            ultimoErro = err;
+            console.log(`⚠️ Tentativa no modelo ${mod} falhou: ${err.message}. Testando próximo...`);
+        }
+    }
+
+    throw new Error(`Falha ao conectar com o Gemini (${ultimoErro ? ultimoErro.message : 'Erro desconhecido'})`);
 }
 
 // 💬 RESPONDER TEXTOS
 bot.on('message', async (msg) => {
-    if (msg.photo || !msg.text) return; // Se for foto, ignora aqui
+    if (msg.photo || !msg.text) return;
 
     const chatId = msg.chat.id;
     const text = msg.text;
 
     if (text === '/start') {
-        bot.sendMessage(chatId, '👋 Olá Lindinaldo! Eu sou o **Bob AI X**.\n\nEnvie qualquer texto ou **mande uma foto** para eu analisar!', { parse_mode: 'Markdown' });
-        return;
-    }
-
-    if (!aiModel) {
-        bot.sendMessage(chatId, '⚠️ Chave da IA não configurada no Render.');
+        bot.sendMessage(chatId, '👋 Olá Lindinaldo! Eu sou o **Bob AI X**.\n\nEnvie qualquer pergunta por texto ou **mande uma foto** para eu analisar!', { parse_mode: 'Markdown' });
         return;
     }
 
     try {
         bot.sendChatAction(chatId, 'typing');
-        const result = await aiModel.generateContent(text);
-        bot.sendMessage(chatId, result.response.text());
+        const resposta = await gerarComIA(text);
+        bot.sendMessage(chatId, resposta);
     } catch (error) {
         console.error('❌ Erro no texto:', error.message);
-        bot.sendMessage(chatId, 'Desculpe, ocorreu um erro ao processar seu texto.');
+        bot.sendMessage(chatId, `⚠️ ${error.message}`);
     }
 });
 
-// 📸 ANALISAR FOTOS INSTANTANEAMENTE
+// 📸 ANALISAR FOTOS
 bot.on('photo', async (msg) => {
     const chatId = msg.chat.id;
-    const prompt = msg.caption || "Analise esta imagem em detalhes. Se houver qualquer texto, documento, livro ou anotação, leia e resuma o conteúdo de forma clara e simples.";
-
-    if (!aiModel) {
-        bot.sendMessage(chatId, '⚠️ Chave da IA não configurada no Render.');
-        return;
-    }
+    const prompt = msg.caption || "Analise esta imagem em detalhes. Se houver qualquer texto, documento ou anotação, leia e resuma o conteúdo de forma clara.";
 
     try {
         bot.sendMessage(chatId, '👀 *Analisando a foto...*', { parse_mode: 'Markdown' });
@@ -85,17 +95,19 @@ bot.on('photo', async (msg) => {
             }
         };
 
-        const result = await aiModel.generateContent([prompt, imagePart]);
-        const replyText = result.response.text();
-
-        bot.sendMessage(chatId, replyText);
+        const resposta = await gerarComIA(prompt, imagePart);
+        bot.sendMessage(chatId, resposta);
 
     } catch (error) {
-        console.error('❌ Erro na análise da foto:', error.message);
-        bot.sendMessage(chatId, 'Desculpe, não consegui ler/analisar esta imagem.');
+        console.error('❌ Erro na foto:', error.message);
+        bot.sendMessage(chatId, `⚠️ ${error.message}`);
     }
 });
 
-bot.on('polling_error', (error) => console.error('❌ Erro no polling:', error.message));
+bot.on('polling_error', (error) => {
+    if (!error.message.includes('409 Conflict')) {
+        console.error('❌ Erro no polling:', error.message);
+    }
+});
 
 module.exports = bot;
