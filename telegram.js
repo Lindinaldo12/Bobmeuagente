@@ -18,6 +18,31 @@ if (apiKey) {
     console.log('⚠️ Chave de API ausente nas variáveis do Render.');
 }
 
+// 📦 Função auxiliar para enviar mensagens longas sem estourar o limite de 4096 do Telegram
+async function enviarMensagemLonga(chatId, texto, options = {}) {
+    if (!texto) return;
+    const LIMITE = 3800; // Margem de segurança
+
+    if (texto.length <= LIMITE) {
+        return await bot.sendMessage(chatId, texto, options);
+    }
+
+    let inicio = 0;
+    while (inicio < texto.length) {
+        let fim = inicio + LIMITE;
+        if (fim < texto.length) {
+            // Procura a última quebra de linha para não cortar uma frase ao meio
+            const ultimaQuebra = texto.lastIndexOf('\n', fim);
+            if (ultimaQuebra > inicio) {
+                fim = ultimaQuebra;
+            }
+        }
+        const pedaco = texto.slice(inicio, fim);
+        await bot.sendMessage(chatId, pedaco, options);
+        inicio = fim;
+    }
+}
+
 // Busca dinamicamente os modelos GRATUITOS e ATIVOS na OpenRouter
 async function obterModelosGratuitosAtivos(eFoto = false) {
     try {
@@ -115,7 +140,7 @@ bot.on('message', async (msg) => {
     const text = msg.text;
 
     if (text === '/start') {
-        bot.sendMessage(chatId, '👋 Olá Lindinaldo! Eu sou o **Bob AI X**.\n\nEnvie qualquer texto, **foto** ou **arquivo (PDF/TXT)** para eu analisar!', { parse_mode: 'Markdown' });
+        await enviarMensagemLonga(chatId, '👋 Olá Lindinaldo! Eu sou o **Bob AI X**.\n\nEnvie qualquer texto, **foto** ou **arquivo (PDF/TXT)** para eu analisar!');
         return;
     }
 
@@ -126,10 +151,10 @@ bot.on('message', async (msg) => {
             { role: 'user', content: text }
         ];
         const resposta = await chamarOpenRouter(messages, false);
-        bot.sendMessage(chatId, resposta);
+        await enviarMensagemLonga(chatId, resposta);
     } catch (error) {
         console.error('❌ Erro no texto:', error.message);
-        bot.sendMessage(chatId, `⚠️ Erro na IA: ${error.message}`);
+        await enviarMensagemLonga(chatId, `⚠️ Erro na IA: ${error.message}`);
     }
 });
 
@@ -139,7 +164,7 @@ bot.on('photo', async (msg) => {
     const prompt = msg.caption || "Analise esta imagem em detalhes. Se houver qualquer texto ou documento, leia e resuma o conteúdo de forma clara e objetiva.";
 
     try {
-        bot.sendMessage(chatId, '👀 *Analisando a foto...*', { parse_mode: 'Markdown' });
+        await enviarMensagemLonga(chatId, '👀 *Analisando a foto...*');
         bot.sendChatAction(chatId, 'typing');
 
         const photo = msg.photo[msg.photo.length - 1];
@@ -161,11 +186,11 @@ bot.on('photo', async (msg) => {
         ];
 
         const resposta = await chamarOpenRouter(messages, true);
-        bot.sendMessage(chatId, resposta);
+        await enviarMensagemLonga(chatId, resposta);
 
     } catch (error) {
         console.error('❌ Erro na foto:', error.message);
-        bot.sendMessage(chatId, `⚠️ Erro na análise da foto: ${error.message}`);
+        await enviarMensagemLonga(chatId, `⚠️ Erro na análise da foto: ${error.message}`);
     }
 });
 
@@ -177,7 +202,7 @@ bot.on('document', async (msg) => {
     const caption = msg.caption || "Faça um resumo completo e analise o conteúdo deste documento de forma clara, organizada e didática.";
 
     try {
-        bot.sendMessage(chatId, `📄 *Lendo o arquivo ${fileName}...*`, { parse_mode: 'Markdown' });
+        await enviarMensagemLonga(chatId, `📄 *Lendo o arquivo ${fileName}...*`);
         bot.sendChatAction(chatId, 'typing');
 
         const fileLink = await bot.getFileLink(doc.file_id);
@@ -185,41 +210,37 @@ bot.on('document', async (msg) => {
 
         let textoExtraido = '';
 
-        // Processa arquivo TXT
         if (fileName.toLowerCase().endsWith('.txt') || doc.mime_type === 'text/plain') {
             textoExtraido = await fileRes.text();
         } 
-        // Processa arquivo PDF
         else if (fileName.toLowerCase().endsWith('.pdf') || doc.mime_type === 'application/pdf') {
             const arrayBuffer = await fileRes.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
             const pdfData = await pdfParse(buffer);
             textoExtraido = pdfData.text;
         } else {
-            bot.sendMessage(chatId, '⚠️ No momento consigo ler apenas arquivos **.PDF** e **.TXT**.');
+            await enviarMensagemLonga(chatId, '⚠️ No momento consigo ler apenas arquivos **.PDF** e **.TXT**.');
             return;
         }
 
         if (!textoExtraido || textoExtraido.trim().length === 0) {
-            bot.sendMessage(chatId, '⚠️ Não consegui extrair texto deste arquivo (pode ser um PDF escaneado como imagem pura).');
+            await enviarMensagemLonga(chatId, '⚠️ Não consegui extrair texto deste arquivo (pode ser um PDF escaneado como imagem pura).');
             return;
         }
 
-        // Limita o texto para os primeiros 15.000 caracteres (evita estourar limite da IA)
         const textoLimitado = textoExtraido.slice(0, 15000);
-        const avisoTamanho = textoExtraido.length > 15000 ? '\n\n*(Nota: Documento muito longo. Foi lido até os primeiros 15.000 caracteres).*' : '';
 
         const messages = [
-            { role: 'system', content: 'Você é o Bob AI X, um especialista em resumir e explicar documentos enviados pelo usuário.' },
+            { role: 'system', content: 'Você é o Bob AI X, um especialista em resumir e explicar documentos enviados pelo usuário. Mantenha as explicações organizadas.' },
             { role: 'user', content: `${caption}\n\n--- CONTEÚDO DO ARQUIVO (${fileName}) ---\n${textoLimitado}\n--- FIM DO ARQUIVO ---` }
         ];
 
         const resposta = await chamarOpenRouter(messages, false);
-        bot.sendMessage(chatId, resposta + avisoTamanho);
+        await enviarMensagemLonga(chatId, resposta);
 
     } catch (error) {
         console.error('❌ Erro no documento:', error.message);
-        bot.sendMessage(chatId, `⚠️ Erro ao processar o documento: ${error.message}`);
+        await enviarMensagemLonga(chatId, `⚠️ Erro ao processar o documento: ${error.message}`);
     }
 });
 
