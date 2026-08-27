@@ -29,12 +29,8 @@ function responderIdentidade(pergunta, usuarioId) {
     "",
     "Meu criador, dono e MASTER é **José Lindinaldo do Nascimento Luiz**.",
     "",
-    "Minha função é ajudar o MASTER com conversação, programação, análise de arquivos, memória, pesquisa, automação, ferramentas e suporte técnico, sempre respeitando a arquitetura de segurança e permissões do projeto Bob.",
-    "",
-    `ID do usuário atual: \`${usuarioId}\``
+    "Minha função é ajudar o MASTER com conversação, programação, análise de arquivos, memória, pesquisa, automação, ferramentas e suporte técnico, sempre respeitando a arquitetura de segurança e permissões do projeto Bob."
   ].join("\n");
 }
 
-module.exports = {
-  responderIdentidade
-};
+module.exports = { responderIdentidade };

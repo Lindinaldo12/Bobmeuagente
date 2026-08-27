@@ -1,3 +1,4 @@
+const { search } = require('duck-duck-scrape');
 require("dotenv").config({
   path: require("path").join(__dirname, "../.env")
 });
@@ -589,5 +590,25 @@ class AgentePesquisador {
     return await this.buscarNaWeb(comando);
   }
 }
+
+
+  async fallbackDuckDuckGo(query) {
+    try {
+      console.log("🌐 Tavily indisponível. Usando DuckDuckGo Fallback...");
+      const searchRes = await search(query);
+      if (!searchRes || !searchRes.results || searchRes.results.length === 0) {
+        return null;
+      }
+      const topResults = searchRes.results.slice(0, 5).map(r => `• [${r.title}](${r.url}): ${r.description}`).join("
+
+");
+      return `FONTE: DuckDuckGo (Busca Gratuita)
+
+${topResults}`;
+    } catch (e) {
+      console.error("❌ Erro no fallback DuckDuckGo:", e.message);
+      return null;
+    }
+  }
 
 module.exports = new AgentePesquisador();
