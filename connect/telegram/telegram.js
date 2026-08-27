@@ -125,7 +125,17 @@ function criarBot() {
             ==================================================
             */
 
-            const usarWeb = detectorWeb.precisaWeb(pergunta);
+            
+            // Ferramentas de dados atuais (clima/cambio) ANTES do detector,
+            // para entender continuacoes tipo "E em Sao Paulo"
+            const dadosAtuaisResultado = await dadosAtuais.executar(pergunta, usuarioId);
+            if (dadosAtuaisResultado) {
+                console.log("✅ Dados atuais obtidos por ferramenta dedicada.");
+                await ctx.reply(dadosAtuaisResultado);
+                return;
+            }
+
+const usarWeb = detectorWeb.precisaWeb(pergunta);
 
             console.log(
                 usarWeb

@@ -40,3 +40,6 @@ backups/**/env_backup*
 *env_backup*
 backups/**/.env*
 backups/**/env_backup*
+
+memoria/contexto_conversa.json
+memoria/fatos_aprendidos.json
