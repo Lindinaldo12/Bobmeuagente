@@ -6,6 +6,7 @@ const auth = require("../../core/auth");
 const detectorWeb = require("../../core/detectorWeb");
 const pesquisador = require("../../agentes/pesquisador");
 const dadosAtuais = require("../../ferramentas/web/dadosAtuais");
+const fatos = require("../../core/fatosAprendidos");
 const kernel = require("../../kernel/kernel");
 const { responderIdentidade } = require("../../core/respostasIdentidade");
 
@@ -82,6 +83,40 @@ function criarBot() {
             return;
         }
 
+        // 🧠 MEMÓRIA EVOLUTIVA — comandos de ensino
+        const novoFato = fatos.extrairComandoAprender(pergunta);
+        if (novoFato) {
+            const r = fatos.aprender(novoFato, usuarioId);
+            if (r.repetido) {
+                await ctx.reply("🧠 Eu já sabia disso, Lindinaldo. Continuo lembrando!");
+            } else {
+                await ctx.reply("🧠 Aprendi e nunca vou esquecer: " + novoFato + "\n(Total de fatos memorizados: " + r.total + ")");
+            }
+            return;
+        }
+
+        const fatoEsquecer = fatos.extrairComandoEsquecer(pergunta);
+        if (fatoEsquecer) {
+            const removidos = fatos.esquecer(fatoEsquecer);
+            if (removidos > 0) {
+                await ctx.reply("🗑️ Esqueci " + removidos + " fato(s) sobre: " + fatoEsquecer);
+            } else {
+                await ctx.reply("Não encontrei nada memorizado sobre isso.");
+            }
+            return;
+        }
+
+        if (/^(?:bob[,!\s]*)?(?:o que voce (?:sabe|lembra|memorizou)|liste (?:seus |os )?fatos)/i.test(pergunta)) {
+            const lista = fatos.listar();
+            if (lista.length === 0) {
+                await ctx.reply("Ainda não memorizei nenhum fato. Me ensine com: 'Bob, lembre que ...'");
+            } else {
+                const linhas = lista.map((f, i) => (i + 1) + ". " + f.fato);
+                await ctx.reply("🧠 Fatos que memorizei:\n\n" + linhas.join("\n"));
+            }
+            return;
+        }
+
         try {
 
             /*
@@ -112,7 +147,7 @@ function criarBot() {
                 console.log("🌐 ===== BUSCA WEB =====");
 
                 const resultadoDadosAtuais =
-                    await dadosAtuais.executar(pergunta);
+                    await dadosAtuais.executar(pergunta, usuarioId);
 
                 if (resultadoDadosAtuais) {
                     console.log("✅ Dados atuais obtidos por ferramenta dedicada.");
@@ -147,6 +182,15 @@ function criarBot() {
             */
 
             let textoParaKernel = pergunta;
+
+            // 🧠 Injeta fatos aprendidos relevantes no contexto
+            const fatosRel = fatos.buscarRelevantes(pergunta);
+            if (fatosRel.length > 0) {
+                textoParaKernel = "FATOS QUE VOCE APRENDEU E DEVE LEMBRAR (use naturalmente na resposta):\n" +
+                    fatosRel.map(f => "- " + f.fato).join("\n") +
+                    "\n\nPERGUNTA DO USUARIO:\n" + pergunta;
+                console.log("🧠 Fatos relevantes injetados:", fatosRel.length);
+            }
 
             if (dadosWeb) {
 
