@@ -592,6 +592,21 @@ class AgentePesquisador {
 }
 
 
+  
+  async executar(query) {
+    // Tenta primeiro a Tavily
+    const resultadoTavily = await this.buscarNaWeb(query);
+    
+    if (resultadoTavily) {
+      return resultadoTavily;
+    }
+    
+    // Se Tavily falhar, usa DuckDuckGo
+    console.log("⚠️ Tavily falhou. Tentando DuckDuckGo...");
+    return await this.fallbackDuckDuckGo(query);
+  }
+
+
   async fallbackDuckDuckGo(query) {
     try {
       console.log("🌐 Tavily indisponível. Usando DuckDuckGo Fallback...");
