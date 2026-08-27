@@ -1,4 +1,3 @@
-const { search } = require('duck-duck-scrape');
 require("dotenv").config({
   path: require("path").join(__dirname, "../.env")
 });
@@ -591,76 +590,4 @@ class AgentePesquisador {
   }
 }
 
-
-  
-  
-      const topResults = searchRes.results.slice(0, 5).map(r => `• [${r.title}](${r.url}): ${r.description}`).join("
-
-");
-      return `FONTE: DuckDuckGo (Busca Gratuita)
-
-${topResults}`;
-    } catch (e) {
-      console.error("❌ Erro no fallback DuckDuckGo:", e.message);
-      return null;
-    }
-  }
-
 module.exports = new AgentePesquisador();
-
-// ==========================================
-// 🦆 FALLBACK DUCKDUCKGO (Grátis, sem chave)
-// ==========================================
-
-async function fallbackDuckDuckGo(query) {
-  try {
-    console.log("🌐 Tavily indisponivel. Usando DuckDuckGo Fallback...");
-    
-    // Import dinâmico para evitar problemas de carga
-    const { search } = require('duck-duck-scrape');
-    
-    const searchRes = await search(query);
-    
-    if (!searchRes || !searchRes.results || searchRes.results.length === 0) {
-      console.log("⚠️ DuckDuckGo nao retornou resultados.");
-      return null;
-    }
-    
-    console.log("✅ DuckDuckGo retornou", searchRes.results.length, "resultados.");
-    
-    // Formatar resultado de forma segura (sem template literals complexos)
-    var topResults = [];
-    for (var i = 0; i < Math.min(5, searchRes.results.length); i++) {
-      var r = searchRes.results[i];
-      var linha = "* [" + r.title + "](" + r.url + "): " + r.description;
-      topResults.push(linha);
-    }
-    
-    return "FONTE: DuckDuckGo (Busca Gratuita)\n\n" + topResults.join("\n\n");
-    
-  } catch (erro) {
-    console.error("❌ Erro no fallback DuckDuckGo:", erro.message);
-    return null;
-  }
-}
-
-// Sobrescrever o metodo executar da classe para incluir fallback
-AgentePesquisador.prototype.executar = async function(query) {
-  console.log("🔍 Iniciando pesquisa (com fallback)...");
-  
-  // 1. Tentar Tavily primeiro
-  try {
-    var resultadoTavily = await this.buscarNaWeb(query);
-    if (resultadoTavily) {
-      console.log("✅ Tavily retornou dados.");
-      return resultadoTavily;
-    }
-  } catch (err) {
-    console.error("⚠️ Erro Tavily:", err.message);
-  }
-  
-  // 2. Se Tavily falhar, usar DuckDuckGo
-  return await fallbackDuckDuckGo(query);
-};
-
-module.exports = AgentePesquisador;
