@@ -593,27 +593,7 @@ class AgentePesquisador {
 
 
   
-  async executar(query) {
-    // Tenta primeiro a Tavily
-    const resultadoTavily = await this.buscarNaWeb(query);
-    
-    if (resultadoTavily) {
-      return resultadoTavily;
-    }
-    
-    // Se Tavily falhar, usa DuckDuckGo
-    console.log("⚠️ Tavily falhou. Tentando DuckDuckGo...");
-    return await this.fallbackDuckDuckGo(query);
-  }
-
-
-  async fallbackDuckDuckGo(query) {
-    try {
-      console.log("🌐 Tavily indisponível. Usando DuckDuckGo Fallback...");
-      const searchRes = await search(query);
-      if (!searchRes || !searchRes.results || searchRes.results.length === 0) {
-        return null;
-      }
+  
       const topResults = searchRes.results.slice(0, 5).map(r => `• [${r.title}](${r.url}): ${r.description}`).join("
 
 ");
