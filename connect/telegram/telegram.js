@@ -5,6 +5,7 @@ const config = require("../../config/config");
 const auth = require("../../core/auth");
 const detectorWeb = require("../../core/detectorWeb");
 const pesquisador = require("../../agentes/pesquisador");
+const dadosAtuais = require("../../ferramentas/web/dadosAtuais");
 const kernel = require("../../kernel/kernel");
 const { responderIdentidade } = require("../../core/respostasIdentidade");
 
@@ -109,6 +110,15 @@ function criarBot() {
 
                 console.log("");
                 console.log("🌐 ===== BUSCA WEB =====");
+
+                const resultadoDadosAtuais =
+                    await dadosAtuais.executar(pergunta);
+
+                if (resultadoDadosAtuais) {
+                    console.log("✅ Dados atuais obtidos por ferramenta dedicada.");
+                    await ctx.reply(resultadoDadosAtuais);
+                    return;
+                }
 
                 const resultadoWeb =
                     await pesquisador.executar(pergunta);
