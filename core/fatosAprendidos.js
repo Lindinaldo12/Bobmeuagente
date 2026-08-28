@@ -45,11 +45,13 @@ function esquecer(trecho) {
 
 function listar() { return fatos; }
 
-function buscarRelevantes(pergunta) {
+function buscarRelevantes(pergunta, usuarioId) {
   const palavras = normalizar(pergunta).split(/\s+/).filter(p => p.length > 3);
   if (palavras.length === 0) return [];
+  const uid = String(usuarioId || "");
   return fatos.filter(f => {
-    const n = normalizar(f.fato);
+    if (uid && f.por && String(f.por) !== uid) return false;
+    const n = normalizar(f.fato);    const n = normalizar(f.fato);
     return palavras.some(p => n.includes(p));
   }).slice(-6);
 }

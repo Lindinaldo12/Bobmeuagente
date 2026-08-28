@@ -7,6 +7,7 @@ const detectorWeb = require("../../core/detectorWeb");
 const pesquisador = require("../../agentes/pesquisador");
 const dadosAtuais = require("../../ferramentas/web/dadosAtuais");
 const fatos = require("../../core/fatosAprendidos");
+const instrucoes = require("../../core/respostasIdentidade");
 const kernel = require("../../kernel/kernel");
 const { responderIdentidade } = require("../../core/respostasIdentidade");
 
@@ -80,6 +81,13 @@ function criarBot() {
         const respostaIdentidade = responderIdentidade(pergunta, usuarioId);
         if (respostaIdentidade) {
             await ctx.reply(respostaIdentidade);
+            return;
+        }
+
+        // 📋 INSTRUÇÕES DIRETAS (persona/configuração)
+        const instrucao = instrucoes.responderInstrucoes ? instrucoes.responderInstrucoes(pergunta, usuarioId) : null;
+        if (instrucao) {
+            await ctx.reply(instrucao);
             return;
         }
 
@@ -194,7 +202,7 @@ const usarWeb = detectorWeb.precisaWeb(pergunta);
             let textoParaKernel = pergunta;
 
             // 🧠 Injeta fatos aprendidos relevantes no contexto
-            const fatosRel = fatos.buscarRelevantes(pergunta);
+            const fatosRel = fatos.buscarRelevantes(pergunta, usuarioId);
             if (fatosRel.length > 0) {
                 textoParaKernel = "FATOS QUE VOCE APRENDEU E DEVE LEMBRAR (use naturalmente na resposta):\n" +
                     fatosRel.map(f => "- " + f.fato).join("\n") +

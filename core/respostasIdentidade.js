@@ -40,3 +40,57 @@ function responderIdentidade(pergunta) {
 }
 
 module.exports = { responderIdentidade };
+
+function responderInstrucoes(pergunta, usuarioId) {
+  const t = String(pergunta || "").toLowerCase();
+  
+  // Instrução para responder em português
+  if ((t.includes("sempre em portugues") || t.includes("responda em portugues") || t.includes("em portugues brasil")) && !t.includes("quem")) {
+    return "Entendido, Lindinaldo. Vou responder sempre em português do Brasil. Não vou esquecer.";
+  }
+  
+  // Instrução para não esquecer / memorizar regra
+  if (t.includes("nao esqueca") || t.includes("lembre que") || t.includes("memorize que") || t.includes("guarde que")) {
+    const match = pergunta.match(/(?:lembre que|memorize que|guarde que|nao esqueça que)\s*(.+)/i);
+    if (match && match[1] && match[1].length > 3) {
+      // Tenta salvar como fato
+      try {
+        const fatos = require("./fatosAprendidos");
+        const r = fatos.aprender("Regra do usuário: " + match[1].trim(), usuarioId || "8133082447");
+        if (!r.repetido) {
+          return "Memorizado para sempre, Lindinaldo: " + match[1].trim() + ". Não vou esquecer.";
+        }
+        return "Já estava memorizado, Lindinaldo. Continuo respeitando.";
+      } catch (e) {
+        return "Entendido, Lindinaldo. Vou lembrar disso: " + match[1].trim();
+      }
+    }
+    return "Memorizado, Lindinaldo. Não vou esquecer.";
+  }
+  
+  return null;
+}
+
+module.exports.responderInstrucoes = responderInstrucoes;
+
+function responderInstrucoes(pergunta, usuarioId) {
+  const t = String(pergunta || "").toLowerCase();
+  if ((t.includes("sempre em portugues") || t.includes("responda em portugues") || t.includes("em portugues brasil")) && !t.includes("quem")) {
+    return "Entendido, Lindinaldo. Vou responder sempre em português do Brasil. Não vou esquecer.";
+  }
+  if (t.includes("nao esqueca") || t.includes("lembre que") || t.includes("memorize que") || t.includes("guarde que")) {
+    const match = pergunta.match(/(?:lembre que|memorize que|guarde que|nao esqueça que)\s*(.+)/i);
+    if (match && match[1] && match[1].trim().length > 3) {
+      try {
+        const f = require("./fatosAprendidos");
+        const r = f.aprender("Regra do usuário: " + match[1].trim(), usuarioId || "8133082447");
+        if (r && !r.repetido) return "Memorizado para sempre, Lindinaldo: " + match[1].trim() + " (fato " + r.total + ").";
+      } catch(e) {}
+      return "Memorizado, Lindinaldo. Não vou esquecer.";
+    }
+    return "Memorizado, Lindinaldo. Não vou esquecer.";
+  }
+  return null;
+}
+
+module.exports.responderInstrucoes = responderInstrucoes;
