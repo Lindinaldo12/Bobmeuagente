@@ -1,226 +1,75 @@
-const contexto = require("./contexto");
-const preferencias = require("./preferencias");
-const PREFERENCIAS = require("./configPreferencias");
-const conhecimento = require("./conhecimento");
-const gerenciadorFerramentas = require("../ferramentas/gerenciador");
+const fs = require("fs");
+const path = require("path");
 
-function responder(usuario, pergunta) {
-    const texto = pergunta.toLowerCase();
+const DIR = path.join(__dirname, "..", "..", "dados", "perfis");
+const LIMITE_PREFS = 30;
 
-    // Ficha pronta com tudo do usuário (impressa UMA vez no início)
-    const dados = conhecimento.listarPerfil(usuario);
+function caminhoPerfil(idUsuario) {
+    return path.join(DIR, `perfil_${idUsuario}.json`);
+}
 
-    // --- RESUMO DO CONHECIMENTO ---
-    if (
-        texto.includes("o que você sabe sobre mim") ||
-        texto.includes("o que voce sabe sobre mim") ||
-        texto.includes("o que sabe sobre mim") ||
-        texto.includes("o que você sabe de mim") ||
-        texto.includes("o que voce sabe de mim")
-    ) {
-        return conhecimento.resumir(usuario);
+function garantir() {
+    if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
+}
+
+function carregar(idUsuario) {
+    garantir();
+    const caminho = caminhoPerfil(idUsuario);
+    try {
+        return JSON.parse(fs.readFileSync(caminho, "utf-8"));
+    } catch {
+        return {
+            id: idUsuario,
+            preferencias: [],
+            fatos: [],
+            criadoEm: new Date().toISOString()
+        };
     }
+}
 
-    // --- PREFERÊNCIAS (GENÉRICO) ---
-    for (const config of PREFERENCIAS) {
-        if (texto.includes(config.perguntar)) {
-            const valor = preferencias.obter(usuario, config.chave);
+function salvar(perfil) {
+    garantir();
+    fs.writeFileSync(caminhoPerfil(perfil.id), JSON.stringify(perfil, null, 2));
+}
 
-            if (!valor) {
-                return `Você ainda não me disse ${config.resposta}.`;
-            }
-
-            return `${config.resposta} ${valor}.`;
-        }
+function adicionarPreferencia(idUsuario, preferencia) {
+    const perfil = carregar(idUsuario);
+    const existe = perfil.preferencias?.some(
+        (p) => p.tipo === preferencia.tipo && p.valor.toLowerCase() === preferencia.valor.toLowerCase()
+    );
+    if (!existe) {
+        perfil.preferencias.push({ ...preferencia, aprendidoEm: new Date().toISOString() });
+        while (perfil.preferencias.length > LIMITE_PREFS) perfil.preferencias.shift();
+        salvar(perfil);
     }
+    return perfil;
+}
 
-    // --- LISTAR FERRAMENTAS / AJUDA ---
-    if (
-        /quais ferramentas/i.test(texto) ||
-        /liste.*ferramentas/i.test(texto) ||
-        /que ferramentas/i.test(texto) ||
-        /o que você sabe fazer/i.test(texto) ||
-        /o que voce sabe fazer/i.test(texto) ||
-        /como posso usar/i.test(texto)
-    ) {
-        return gerenciadorFerramentas.ajuda();
+function atualizarPreferencias(usuarioMemoria, texto) {
+    if (!usuarioMemoria?.id) return;
+    const perfil = carregar(usuarioMemoria.id);
+    perfil.ultimoTexto = String(texto || "").slice(0, 2000);
+    salvar(perfil);
+    return perfil;
+}
+
+function montarContextoPerfil(idUsuario) {
+    const perfil = carregar(idUsuario);
+    const partes = [];
+    if (perfil.preferencias?.length) {
+        partes.push("PREFERÊNCIAS DO USUÁRIO:\n" +
+            perfil.preferencias.map((p) => `- [${p.tipo}] ${p.valor}`).join("\n"));
     }
-
-    // --- NOME ---
-    if (
-        texto.includes("qual é o meu nome") ||
-        texto.includes("qual e o meu nome") ||
-        texto.includes("qual é meu nome") ||
-        texto.includes("qual e meu nome") ||
-        texto.includes("como eu me chamo")
-    ) {
-        const nome = dados.nome;
-        if (nome) {
-            return `Seu nome é ${nome}.`;
-        }
-        return "Você ainda não me disse o seu nome.";
+    if (perfil.fatos?.length) {
+        partes.push("FATOS SOBRE O USUÁRIO:\n" + perfil.fatos.join("\n"));
     }
-
-    // --- CIDADE ---
-    if (
-        texto.includes("onde eu moro") ||
-        texto.includes("qual é minha cidade") ||
-        texto.includes("qual e minha cidade") ||
-        texto.includes("em que cidade eu moro")
-    ) {
-        const cidade = dados.cidade;
-        if (cidade) {
-            return `Você mora em ${cidade}.`;
-        }
-        return "Você ainda não me disse onde mora.";
-    }
-
-    // --- PROFISSÃO ---
-    if (
-        texto.includes("qual é minha profissão") ||
-        texto.includes("qual e minha profissão") ||
-        texto.includes("qual e minha profissao") ||
-        texto.includes("o que eu faço") ||
-        texto.includes("qual minha profissão")
-    ) {
-        const profissao = dados.profissao;
-        if (profissao) {
-            return `Sua profissão é ${profissao}.`;
-        }
-        return "Você ainda não me disse qual é sua profissão.";
-    }
-
-    // --- PROJETOS ---
-    if (
-        texto.includes("qual é meu projeto") ||
-        texto.includes("qual e meu projeto") ||
-        texto.includes("quais são meus projetos") ||
-        texto.includes("quais sao meus projetos")
-    ) {
-        const projetos = dados.projetos || [];
-
-        if (projetos.length === 0) {
-            return "Você ainda não me contou quais são seus projetos.";
-        }
-        if (projetos.length === 1) {
-            return `Seu projeto é ${projetos[0]}.`;
-        }
-        return `Seus projetos são: ${projetos.join(", ")}.`;
-    }
-
-    // --- OBJETIVOS ---
-    if (
-        texto.includes("qual é meu objetivo") ||
-        texto.includes("qual e meu objetivo") ||
-        texto.includes("quais são meus objetivos") ||
-        texto.includes("quais sao meus objetivos")
-    ) {
-        const objetivos = dados.objetivos || [];
-
-        if (objetivos.length === 0) {
-            return "Você ainda não me contou quais são seus objetivos.";
-        }
-        if (objetivos.length === 1) {
-            return `Seu objetivo é ${objetivos[0]}.`;
-        }
-        return `Seus objetivos são: ${objetivos.join(", ")}.`;
-    }
-
-    // --- ÚLTIMO PROJETO MENCIONADO ---
-    if (
-        texto.includes("qual é esse projeto") ||
-        texto.includes("que projeto é esse") ||
-        texto === "esse projeto" ||
-        texto === "ele"
-    ) {
-        // ==========================================
-        // ÚLTIMO PROJETO — MEMÓRIA V4 PERSISTENTE
-        // ==========================================
-
-        let ultimoProjeto =
-            usuario?.perfil?.ultimoProjeto || null;
-
-        // Compatibilidade com contexto temporário.
-        if (!ultimoProjeto) {
-            ultimoProjeto =
-                contexto.obter(
-                    usuario.id,
-                    "ultimoProjeto"
-                );
-        }
-
-        // Compatibilidade com versões antigas.
-        if (!ultimoProjeto) {
-            ultimoProjeto =
-                contexto.obter(
-                    usuario.id,
-                    "ultimo_projeto"
-                );
-        }
-
-        if (!ultimoProjeto) {
-            return "Ainda não sei a qual projeto você está se referindo.";
-        }
-        return `Você está falando do projeto ${ultimoProjeto}.`;
-    }
-
-    // --- ÚLTIMO OBJETIVO MENCIONADO ---
-    if (
-        texto.includes("qual é meu objetivo") ||
-        texto.includes("qual e meu objetivo")
-    ) {
-        const ultimoObjetivo = contexto.obter(usuario.id, "ultimo_objetivo");
-
-        if (!ultimoObjetivo) {
-            return "Você ainda não me contou qual é o seu objetivo mais recente.";
-        }
-        return `Seu objetivo mais recente é ${ultimoObjetivo}.`;
-    }
-
-    // --- ÚLTIMO CONTEXTO DA CONVERSA ---
-    if (
-        texto === "esse" ||
-        texto === "isso" ||
-        texto === "ele" ||
-        texto === "ela"
-    ) {
-        const ultimo = contexto.ultimo(usuario.id);
-
-        if (!ultimo) {
-            return "Ainda não há contexto suficiente para saber a que você se refere.";
-        }
-        return `Você está se referindo a: ${ultimo.valor}.`;
-    }
-
-    // --- IDENTIDADE DO BOB AI X ---
-    if (
-        texto.includes("quem é você") ||
-        texto.includes("quem e voce") ||
-        texto.includes("qual é o seu nome") ||
-        texto.includes("qual e o seu nome") ||
-        texto.includes("como você se chama") ||
-        texto.includes("como voce se chama") ||
-        texto.includes("quem criou você") ||
-        texto.includes("quem criou voce") ||
-        texto.includes("você é qwen") ||
-        texto.includes("voce e qwen") ||
-        texto.includes("você é chatgpt") ||
-        texto.includes("voce e chatgpt") ||
-        texto.includes("você é openai") ||
-        texto.includes("voce e openai") ||
-        texto.includes("você é alibaba") ||
-        texto.includes("voce e alibaba")
-    ) {
-        return `Eu sou o Bob AI X, um Sistema Operacional de Agentes Inteligentes criado por José Lindinaldo do Nascimento Luiz.
-
-Meu objetivo é ajudar você utilizando agentes especializados, memória, base de conhecimento e inteligência artificial.
-
-Não sou Qwen, ChatGPT, OpenAI nem Alibaba Cloud. Esses podem ser apenas modelos ou tecnologias utilizadas internamente, mas minha identidade é Bob AI X.`;
-    }
-
-    return null;
+    return partes.join("\n\n");
 }
 
 module.exports = {
-    responder
+    carregar,
+    salvar,
+    adicionarPreferencia,
+    atualizarPreferencias,
+    montarContextoPerfil
 };
