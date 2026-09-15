@@ -1,6 +1,5 @@
 "use strict";
 
-// Envia a imagem + texto para o modelo de visão (OpenRouter)
 async function baixarImagem(bot, fileId) {
   const file = await bot.api.getFile(fileId);
   const url = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${file.file_path}`;
