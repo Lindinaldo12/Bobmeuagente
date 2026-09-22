@@ -6,9 +6,7 @@ const MODELO_PADRAO = "google/gemini-2.0-flash-exp";
 
 function validarToken() {
   const token = process.env.BOT_TOKEN;
-  if (!token) {
-    throw new Error("BOT_TOKEN não configurado no ambiente.");
-  }
+  if (!token) throw new Error("BOT_TOKEN não configurado no ambiente.");
   return token;
 }
 
@@ -19,27 +17,19 @@ function validarApiKey(apiKey) {
   return apiKey;
 }
 
-// fetch com timeout, para a chamada nunca travar o bot.
 async function buscarComTimeout(url, opcoes) {
-  return fetch(url, {
-    ...opcoes,
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
+  return fetch(url, { ...opcoes, signal: AbortSignal.timeout(TIMEOUT_MS) });
 }
 
 async function baixarImagem(bot, fileId) {
-  if (!bot?.api?.getFile) {
-    throw new Error("Objeto bot inválido: bot.api.getFile ausente.");
-  }
-  if (!fileId) {
-    throw new Error("fileId não fornecido.");
-  }
+  if (!bot?.api?.getFile) throw new Error("Objeto bot inválido.");
+  if (!fileId) throw new Error("fileId não fornecido.");
 
   const token = validarToken();
-
   const file = await bot.api.getFile(fileId);
+
   if (!file?.file_path) {
-    throw new Error("Telegram não retornou file_path para a imagem.");
+    throw new Error("Telegram não retornou file_path.");
   }
 
   const url = `https://api.telegram.org/file/bot${token}/${file.file_path}`;
@@ -49,10 +39,9 @@ async function baixarImagem(bot, fileId) {
     throw new Error(`Falha ao baixar imagem: HTTP ${resposta.status}`);
   }
 
-  return Buffer.from(await resposta.arrayBuffer());
+  return { bytes: Buffer.from(await resposta.arrayBuffer()), file };
 }
 
-// Mapeia o tipo retornado pelo Telegram para o MIME usado no data URL.
 function obterMime(file) {
   const mapa = {
     jpeg: "image/jpeg",
@@ -62,7 +51,6 @@ function obterMime(file) {
     gif: "image/gif",
     bmp: "image/bmp",
   };
-
   const tipo = file?.file_path?.split(".").pop()?.toLowerCase() || "jpeg";
   return mapa[tipo] || "image/jpeg";
 }
@@ -91,14 +79,12 @@ async function chamarOpenRouter(apiKey, corpo) {
 }
 
 async function analisarImagem({ bot, fileId, texto, apiKey, modelo }) {
-  // Validação de entrada
   const chave = validarApiKey(apiKey);
   const prompt = texto || "Descreva o que está na imagem.";
   const nomeModelo = modelo || MODELO_PADRAO;
 
-  // Baixa a imagem e descobre o MIME real
-  const file = await bot.getFile(fileId);
-  const bytes = await baixarImagem(bot, fileId);
+  // Baixa, descobre o tipo real e monta o base64
+  const { bytes, file } = await baixarImagem(bot, fileId);
   const base64 = bytes.toString("base64");
   const mime = obterMime(file);
 
@@ -109,16 +95,12 @@ async function analisarImagem({ bot, fileId, texto, apiKey, modelo }) {
         role: "user",
         content: [
           { type: "text", text: prompt },
-          {
-            type: "image_url",
-            image_url: { url: `data:${mime};base64,${base64}` },
-          },
+          { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
         ],
       },
     ],
   };
 
-  // Retry em falha transitória (rede / 5xx / 429)
   let ultimoErro = null;
 
   for (let tentativa = 0; tentativa <= MAX_RETRIES; tentativa++) {
@@ -133,22 +115,15 @@ async function analisarImagem({ bot, fileId, texto, apiKey, modelo }) {
       return conteudo.trim();
     } catch (erro) {
       ultimoErro = erro;
-
-      // Não tenta de novo em erro de autenticação (401) ou de entrada (400)
       const codigo = Number(erro.message?.match(/HTTP (\d+)/)?.[1]);
-      if (codigo === 401 || codigo === 400) {
-        break;
-      }
-
+      if (codigo === 401 || codigo === 400) break;
       if (tentativa < MAX_RETRIES) {
         await new Promise((r) => setTimeout(r, 1000 * (tentativa + 1)));
       }
     }
   }
 
-  throw new Error(
-    ultimoErro?.message || "Não foi possível analisar a imagem."
-  );
+  throw new Error(ultimoErro?.message || "Não foi possível analisar a imagem.");
 }
 
 module.exports = { analisarImagem };
