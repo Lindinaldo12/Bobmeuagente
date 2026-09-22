@@ -19,6 +19,10 @@ const aprendizado = require("../ia/aprendizado");
 const perfil = require("../ia/perfil");
 const ia = require("../ia/gerenciador");
 
+// Palavras que indicam continuação da conversa anterior.
+// Exige contexto válido (preisão de que o anterior exista e não seja vazio).
+const PADROES_CONTINUACAO = /^(resuma|resumo|explique|continue|detalhe|compare|faça um resumo)/i;
+
 async function executar(contexto) {
 
     const idUsuario = String(
@@ -30,13 +34,17 @@ async function executar(contexto) {
     contexto.memoria = memoria.carregar(idUsuario);
     contexto.usuarioMemoria = contexto.memoria;
 
-    // ==========================================
-    // APRENDIZADO DIRETO — MOTOR → EXECUTOR → V4
-    // ==========================================
+    let respostaFinal = "";
 
-    let resultadoAprendizado = null;
+    try {
 
-    if (!contexto.dadosWeb) {
+        // ==========================================
+        // APRENDIZADO DIRETO — MOTOR → EXECUTOR → V4
+        // O aprendizado é decidido pelo MOTOR, não pela
+        // presença de dados web. Removido o acoplamento.
+        // ==========================================
+
+        let resultadoAprendizado = null;
 
         const decisaoMemoria =
             motorDecisao.decidir(
@@ -49,9 +57,7 @@ async function executar(contexto) {
         ) {
 
             console.log("");
-            console.log(
-                "🧠 KERNEL → MOTOR: APRENDIZADO DETECTADO"
-            );
+            console.log("🧠 KERNEL → MOTOR: APRENDIZADO DETECTADO");
 
             resultadoAprendizado =
                 await executorIA.executar(
@@ -66,114 +72,111 @@ async function executar(contexto) {
                     }
                 );
 
-            console.log(
-                "✅ APRENDIZADO → MEMÓRIA V4"
-            );
+            console.log("✅ APRENDIZADO → MEMÓRIA V4");
 
             contexto.resultadoAprendizado =
                 resultadoAprendizado;
         }
-    }
 
-    // ==========================================
-    // IDENTIDADE OFICIAL DO USUÁRIO
-    // ==========================================
+        // ==========================================
+        // IDENTIDADE OFICIAL DO USUÁRIO
+        // ==========================================
 
-    contexto.identidade =
-        auth.obterIdentidadeUsuario(idUsuario);
+        contexto.identidade =
+            auth.obterIdentidadeUsuario(idUsuario);
 
-    if (contexto.usuario && typeof contexto.usuario === "object") {
-        contexto.usuario.identidade =
-            contexto.identidade;
-    }
+        if (contexto.usuario && typeof contexto.usuario === "object") {
+            contexto.usuario.identidade =
+                contexto.identidade;
+        }
 
-    console.log("");
-    console.log("===== IDENTIDADE DO KERNEL =====");
-    console.log(
-        JSON.stringify(
-            contexto.identidade,
-            null,
-            2
-        )
-    );
-    console.log("================================");
-
-    const ultimoContexto =
-        memoriaContexto.obter(
-            contexto.usuario?.id ||
-            contexto.usuarioId
+        console.log("");
+        console.log("===== IDENTIDADE DO KERNEL =====");
+        console.log(
+            JSON.stringify(
+                contexto.identidade,
+                null,
+                2
+            )
         );
+        console.log("================================");
 
-    const ultimaPergunta =
-        ultimoContexto?.pergunta || "";
+        const ultimoContexto =
+            memoriaContexto.obter(
+                contexto.usuario?.id ||
+                contexto.usuarioId
+            );
 
-    let textoProcessado = contexto.texto;
+        const ultimaPergunta =
+            ultimoContexto?.pergunta || "";
 
-    if (
-        ultimaPergunta &&
-        /^(resuma|resumo|explique|continue|detalhe|compare|faça um resumo)/i
-            .test(contexto.texto)
-    ) {
+        // Guarda a pergunta ORIGINAL do usuário. Ela é o que
+        // será persistido no histórico. Nunca é sobrescrita.
+        const perguntaOriginal =
+            contexto.textoOriginal ||
+            contexto.texto ||
+            "";
 
-        textoProcessado =
-            `Pergunta anterior:
+        // Monta a pergunta que vai à IA SEM alterar contexto.texto.
+        // Assim o histórico guarda a pergunta real, não o wrapper.
+        let perguntaParaIA = contexto.texto;
+
+        if (
+            ultimaPergunta &&
+            PADROES_CONTINUACAO.test(contexto.texto)
+        ) {
+
+            perguntaParaIA =
+                `Pergunta anterior:
 ${ultimaPergunta}
 
 Nova solicitação:
 ${contexto.texto}`;
+        }
 
-        contexto.texto = textoProcessado;
-    }
+        contexto.usuarioMemoria.ultimaMensagem =
+            contexto.texto;
 
-    contexto.usuarioMemoria.ultimaMensagem =
-        contexto.texto;
-
-    console.log("");
-    console.log("========================================");
-    console.log("🌐 DADOS WEB RECEBIDOS PELO KERNEL");
-
-    if (contexto.dadosWeb) {
-
-        console.log("✅ Dados Web disponíveis.");
+        console.log("");
         console.log("========================================");
-
-    } else {
-
-        console.log("ℹ️ Nenhum dado Web recebido.");
-        console.log("========================================");
-    }
-
-    contexto.conhecimento =
-        conhecimento.consultar(contexto.texto);
-
-    console.log("");
-    console.log("===== CONHECIMENTO DO KERNEL =====");
-
-    console.dir(
-        contexto.conhecimento,
-        { depth: null }
-    );
-
-    console.log("==================================");
-
-    console.log(
-        ">>> Entrando no ORQUESTRADOR"
-    );
-
-    let resposta =
-        await orquestrador.processar(contexto);
-
-    console.log(
-        "<<< Saindo do ORQUESTRADOR"
-    );
-
-    if (resposta.status === "ia") {
-
-        let perguntaParaIA = contexto.texto;
+        console.log("🌐 DADOS WEB RECEBIDOS PELO KERNEL");
 
         if (contexto.dadosWeb) {
 
-            perguntaParaIA = `
+            console.log("✅ Dados Web disponíveis.");
+            console.log("========================================");
+
+        } else {
+
+            console.log("ℹ️ Nenhum dado Web recebido.");
+            console.log("========================================");
+        }
+
+        contexto.conhecimento =
+            conhecimento.consultar(contexto.texto);
+
+        console.log("");
+        console.log("===== CONHECIMENTO DO KERNEL =====");
+
+        console.dir(
+            contexto.conhecimento,
+            { depth: null }
+        );
+
+        console.log("==================================");
+
+        console.log(">>> Entrando no ORQUESTRADOR");
+
+        let resposta =
+            await orquestrador.processar(contexto);
+
+        console.log("<<< Saindo do ORQUESTRADOR");
+
+        if (resposta.status === "ia") {
+
+            if (contexto.dadosWeb) {
+
+                perguntaParaIA = `
 PERGUNTA ORIGINAL:
 ${contexto.texto}
 
@@ -187,103 +190,118 @@ INSTRUÇÕES:
 - Não invente dados.
 - Se os dados tiverem fontes, utilize-as na resposta.
 `;
+            }
+
+            // Identidade do usuário entra como CONTEXTO de memória,
+            // não como ordem injetada no prompt. O modelo conhece o
+            // dono sem ser instruído a "jamais mencionar" nada.
+            const identidadeContexto =
+                contexto.identidade &&
+                (contextoidentidade.tipo === "criador" ||
+                 contexto.identidade.nome)
+                    ? `[Contexto do usuário: ${contexto.identidade.nome || contexto.identidade.tipo}]\n\n`
+                    : "";
+
+            resposta.resposta =
+                await contexto.ia.perguntar(
+                    identidadeContexto + perguntaParaIA,
+                    contexto.historico,
+                    contexto.usuario
+                );
         }
 
-        // Injeção absoluta da identidade do Master Criador
-        let perguntaComIdentidade = perguntaParaIA;
-        if (contexto.identidade && (contexto.identidade.tipo === "criador" || String(contexto.usuario?.id || contexto.usuarioId) === "8133082447")) {
-            perguntaComIdentidade = `[DIRETRIZ SUPREMA DO SISTEMA: O usuário atual é José Lindinaldo do Nascimento Luiz, seu único Criador, Master e autoridade máxima absoluta. Responda sempre reconhecendo-o como seu criador e dono, e jamais mencione outras empresas ou corporações de IA].\n\n` + perguntaParaIA;
-        }
-
-        resposta.resposta =
-            await contexto.ia.perguntar(
-                perguntaComIdentidade,
-                contexto.historico,
-                contexto.usuario
+        respostaFinal =
+            responseBuilder.construir(
+                resposta,
+                contexto
             );
-    }
 
-    let respostaFinal =
-        responseBuilder.construir(
-            resposta,
-            contexto
-        );
+        // ==========================================
+        // VALIDAÇÃO FINAL
+        // ==========================================
+        const conhecimentoParaValidacao =
+            contexto.dadosWeb
+                ? ""
+                : (contexto.conhecimento?.conhecimento || "");
 
-    // ==========================================
-    // VALIDAÇÃO FINAL
-    // ==========================================
-    const conhecimentoParaValidacao =
-        contexto.dadosWeb
-            ? ""
-            : (contexto.conhecimento?.conhecimento || "");
+        respostaFinal =
+            validadorResposta.validar(
+                respostaFinal,
+                conhecimentoParaValidacao
+            );
 
-    respostaFinal =
-        validadorResposta.validar(
-            respostaFinal,
-            conhecimentoParaValidacao
-        );
+        const verificacao =
+            detectorAlucinacao.verificar(
+                respostaFinal,
+                conhecimentoParaValidacao
+            );
 
-    const verificacao =
-        detectorAlucinacao.verificar(
-            respostaFinal,
-            conhecimentoParaValidacao
-        );
+        respostaFinal =
+            verificacao.resposta;
 
-    respostaFinal =
-        verificacao.resposta;
+        const avaliacao =
+            autoavaliador.avaliar(
+                respostaFinal
+            );
 
-    const avaliacao =
-        autoavaliador.avaliar(
-            respostaFinal
-        );
+        if (!avaliacao.aprovada) {
 
-    if (!avaliacao.aprovada) {
-
-        console.log(
-            "===== AUTOAVALIADOR ====="
-        );
-
-        console.log(
-            avaliacao.problemas
-        );
-
-        console.log(
-            "========================="
-        );
-    }
-
-    memoriaContexto.salvar(
-        contexto.usuario?.id ||
-        contexto.usuarioId,
-        {
-            pergunta: contexto.texto,
-            resposta: respostaFinal
+            console.log("===== AUTOAVALIADOR =====");
+            console.log(avaliacao.problemas);
+            console.log("=========================");
         }
-    );
 
-    // ==========================================
-    // PERSISTÊNCIA DA CONVERSA — MEMÓRIA V4
-    // ==========================================
+    } catch (erro) {
 
-    const perguntaMemoria =
-        contexto.textoOriginal ||
-        contexto.texto ||
-        "";
+        // Nunca deixa a conversa morrer em silêncio.
+        console.error("❌ ERRO NO KERNEL:", erro);
 
-    memoriaV4.adicionarHistorico(
-        contexto.usuarioMemoria,
-        perguntaMemoria,
-        respostaFinal
-    );
+        respostaFinal =
+            "Desculpe, ocorreu um erro ao processar sua solicitação. " +
+            "Tente novamente em instantes.";
 
-    memoriaV4.salvarUsuario(
-        contexto.usuarioMemoria
-    );
+    } finally {
 
-    memoria.salvar(
-        idUsuario,
-        contexto.usuarioMemoria
-    );
+        // ==========================================
+        // PERSISTÊNCIA GARANTIDA — roda sempre,
+        // com sucesso ou com erro.
+        // ==========================================
+
+        try {
+
+            memoriaContexto.salvar(
+                contexto.usuario?.id ||
+                contexto.usuarioId,
+                {
+                    pergunta: perguntaOriginal,
+                    resposta: respostaFinal
+                }
+            );
+
+            memoriaV4.adicionarHistorico(
+                contexto.usuarioMemoria,
+                perguntaOriginal,
+                respostaFinal
+            );
+
+            memoriaV4.salvarUsuario(
+                contexto.usuarioMemoria
+            );
+
+            memoria.salvar(
+                idUsuario,
+                contexto.usuarioMemoria
+            );
+
+        } catch (erroPersistencia) {
+
+            // Se a persistência falhar, ao menos avisa.
+            console.error(
+                "❌ FALHA NA PERSISTÊNCIA:",
+                erroPersistencia
+            );
+        }
+    }
 
     return respostaFinal;
 }
@@ -291,4 +309,3 @@ INSTRUÇÕES:
 module.exports = {
     executar
 };
-
