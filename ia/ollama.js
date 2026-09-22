@@ -6,6 +6,37 @@ const OLLAMA_URL = "http://127.0.0.1:11434";
 const MAX_HISTORICO = 6;
 const TIMEOUT_MS = 120000;
 
+// ==========================================
+// VALIDAÇÃO DE ENTRADA
+// ==========================================
+
+function validarModelo() {
+    const modelo = config.ollama && config.ollama.model;
+
+    if (!modelo || typeof modelo !== "string") {
+        throw new Error(
+            "Modelo do Ollama não configurado. "
+            + "Verifique config.ollama.model."
+        );
+    }
+
+    return modelo;
+}
+
+function validarPergunta(text) {
+    if (typeof text !== "string" || !text.trim()) {
+        throw new Error(
+            "Pergunta vazia ou inválida."
+        );
+    }
+
+    return text.trim();
+}
+
+// ==========================================
+// HISTÓRICO
+// ==========================================
+
 function prepararHistorico(historico) {
     if (!Array.isArray(historico)) {
         return [];
@@ -25,7 +56,37 @@ function prepararHistorico(historico) {
         }));
 }
 
-async function requisicaoOllama(messages) {
+// ==========================================
+// MONTAGEM DE MENSAGENS
+// ==========================================
+
+function montarMessages(pergunta, historico, systemContent) {
+    const historicoSeguro =
+        prepararHistorico(historico);
+
+    return {
+        historicoSeguro,
+        messages: [
+            {
+                role: "system",
+                content: systemContent
+            },
+            ...historicoSeguro,
+            {
+                role: "user",
+                content: pergunta
+            }
+        ]
+    };
+}
+
+// ==========================================
+// REQUISIÇÃO AO OLLAMA
+// ==========================================
+
+async function requisicaoOllama(messages, temperature) {
+
+    const modelo = validarModelo();
 
     const resposta = await fetch(`${OLLAMA_URL}/api/chat`, {
         method: "POST",
@@ -35,14 +96,11 @@ async function requisicaoOllama(messages) {
         },
 
         body: JSON.stringify({
-            model: config.ollama.model,
-
+            model: modelo,
             messages,
-
             stream: false,
-
             options: {
-                temperature: 0.2
+                temperature: temperature ?? 0.2
             }
         }),
 
@@ -73,7 +131,6 @@ async function requisicaoOllama(messages) {
     return dados.message.content.trim();
 }
 
-
 // ========================================
 // CONECTAR
 // ========================================
@@ -90,9 +147,7 @@ async function conectar() {
         );
 
         if (!resposta.ok) {
-            throw new Error(
-                `HTTP ${resposta.status}`
-            );
+            throw new Error(`HTTP ${resposta.status}`);
         }
 
         console.log("✅ Ollama conectada.");
@@ -101,16 +156,12 @@ async function conectar() {
 
     } catch (erro) {
 
-        console.log(
-            "❌ Erro ao conectar Ollama:"
-        );
-
+        console.log("❌ Erro ao conectar Ollama:");
         console.log(erro.message);
 
         return false;
     }
 }
-
 
 // ========================================
 // PERGUNTA NORMAL
@@ -118,60 +169,46 @@ async function conectar() {
 
 async function perguntar(
     pergunta,
-    historico = []
+    historico = [],
+    usuario = null
 ) {
 
     try {
 
-        console.log(
-            "1 - Iniciando requisição..."
-        );
+        const perguntaSegura =
+            validarPergunta(pergunta);
 
-        const historicoSeguro =
-            prepararHistorico(historico);
+        const { historicoSeguro, messages } =
+            montarMessages(
+                perguntaSegura,
+                historico,
+                systemPrompt
+            );
 
-        const messages = [
+        // Personaliza a temperatura pelo perfil do usuário,
+        // se disponível. Fallback para 0.2.
+        const temperatura =
+            usuario?.perfil?.temperatura ??
+            config.ollama.temperature ??
+            0.2;
 
-            {
-                role: "system",
-                content: systemPrompt
-            },
-
-            ...historicoSeguro,
-
-            {
-                role: "user",
-                content: pergunta
-            }
-
-        ];
-
-        console.log(
-            "📚 Histórico enviado:",
+        const modelo = [
+            "📚 Histórico:",
             historicoSeguro.length,
-            "mensagens"
-        );
-
-        console.log(
-            "🤖 Modelo:",
+            "mensagens | 🤖 Modelo:",
             config.ollama.model
+        ].join(" ");
+
+        console.log(modelo);
+
+        return await requisicaoOllama(
+            messages,
+            temperatura
         );
-
-        const resposta =
-            await requisicaoOllama(messages);
-
-        console.log(
-            "2 - Resposta recebida."
-        );
-
-        return resposta;
 
     } catch (erro) {
 
-        console.log(
-            "❌ Erro no Ollama:"
-        );
-
+        console.log("❌ Erro no Ollama:");
         console.log(erro.message);
 
         return (
@@ -179,7 +216,6 @@ async function perguntar(
         );
     }
 }
-
 
 // ========================================
 // ESPECIALISTA
@@ -194,21 +230,8 @@ async function perguntarEspecialista(
 
     try {
 
-        console.log(
-            "1 - Iniciando requisição do especialista..."
-        );
-
-        /*
-         * IMPORTANTE:
-         *
-         * O especialista recebe apenas um pequeno
-         * contexto recente.
-         *
-         * Não enviamos o histórico inteiro.
-         */
-
-        const historicoSeguro =
-            prepararHistorico(historico);
+        const perguntaSegura =
+            validarPergunta(pergunta);
 
         const systemEspecialista = `
 
@@ -237,28 +260,17 @@ REGRAS DO ESPECIALISTA
 
 `;
 
-        const messages = [
+        const { historicoSeguro, messages } =
+            montarMessages(
+                perguntaSegura,
+                historico,
+                systemEspecialista
+            );
 
-            {
-                role: "system",
-                content: systemEspecialista
-            },
-
-            /*
-             * Somente contexto recente.
-             *
-             * O histórico não pode dominar
-             * a pergunta atual.
-             */
-
-            ...historicoSeguro,
-
-            {
-                role: "user",
-                content: pergunta
-            }
-
-        ];
+        const temperatura =
+            usuario?.perfil?.temperatura ??
+            config.ollama.temperature ??
+            0.2;
 
         console.log(
             "📚 Histórico especialista:",
@@ -266,27 +278,14 @@ REGRAS DO ESPECIALISTA
             "mensagens"
         );
 
-        console.log(
-            "URL:",
-            `${OLLAMA_URL}/api/chat`
+        return await requisicaoOllama(
+            messages,
+            temperatura
         );
-
-        console.log(
-            "Modelo:",
-            config.ollama.model
-        );
-
-        const resposta =
-            await requisicaoOllama(messages);
-
-        return resposta;
 
     } catch (erro) {
 
-        console.log(
-            "❌ Erro especialista:"
-        );
-
+        console.log("❌ Erro especialista:");
         console.log(erro.message);
 
         return (
@@ -295,13 +294,8 @@ REGRAS DO ESPECIALISTA
     }
 }
 
-
 module.exports = {
-
     conectar,
-
     perguntar,
-
     perguntarEspecialista
-
 };
