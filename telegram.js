@@ -140,7 +140,7 @@ bot.on('message', async (msg) => {
     const text = msg.text;
 
     if (text === '/start') {
-        await enviarMensagemLonga(chatId, '👋 Olá Lindinaldo! Eu sou o **Bob AI X**.\n\nEnvie qualquer texto, **foto** ou **arquivo (PDF/TXT)** para eu analisar!');
+        await enviarMensagemLonga(chatId, '👋 Olá Lindinaldo! — assistente ativo (Bob AI X).\n\nEnvie qualquer texto, **foto** ou **arquivo (PDF/TXT)** para eu analisar!');
         return;
     }
 
