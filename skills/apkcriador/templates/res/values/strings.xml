@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Bob AI X</string>
+    <string name="hello">Olá, Mundo!</string>
+    <string name="openrouter_api_key">SUA_CHAVE_AQUI</string>
+</resources>
