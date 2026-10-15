@@ -1,4 +1,3 @@
-cat > ia/comandos.js << 'FIM'
 // ia/comandos.js
 // Funções estilo JARVIS do Bob AI X
 
@@ -61,6 +60,14 @@ function registrar(bot, enviarMensagemLonga, chamarIA) {
         await bot.editMessageText(`⚡ Latência: ${lat} ms — Resposta imediata, Senhor.`, {
             chat_id: msg.chat.id, message_id: m.message_id
         });
+    });
+
+    // 🔍 AUTODIAGNÓSTICO (agente que analisa e conserta falhas)
+    bot.onText(/\/selfcheck/, async (msg) => {
+        await enviarMensagemLonga(msg.chat.id, '🔍 Iniciando diagnóstico do sistema, Senhor...');
+        const { executarDiagnostico, formatarRelatorio } = require("../ia/autoDiagnostico");
+        const relatorio = await executarDiagnostico();
+        await enviarMensagemLonga(msg.chat.id, formatarRelatorio(relatorio));
     });
 
     // 🌤 CLIMA
@@ -301,5 +308,86 @@ async function executarIntencao(bot, chatId, intencao, enviarMensagemLonga, cham
     return false;
 }
 
-module.exports = { registrar, tempoOnline, saudacaoPorHorario, detectarIntencao, executarIntencao };
-FIM
+module.exports = { registrar, registrarAutoCheck, tempoOnline, saudacaoPorHorario, detectarIntencao, executarIntencao };
+
+// ----------------------------------------------------------------------
+// AUTO-CHECK (saúde do sistema) — rodado a cada 15 minutos
+// ----------------------------------------------------------------------
+const path = require("path");
+const autoDiagnostico = require("./autoDiagnostico");
+const fs = require("fs");
+
+function registrarAutoCheck(bot) {
+    let verificacaoAtiva = false;
+    let ultimaVerificacaoEm = Date.now();
+
+    async function verificarEReparar() {
+        if (verificacaoAtiva) return;
+        verificacaoAtiva = true;
+
+        const { executarDiagnostico } = require("../ia/autoDiagnostico");
+        const relatorio = await executarDiagnostico();
+
+        // Conserto automático de falhas simples -> memória corrompida
+        if (relatorio.check.memoria.erros && relatorio.check.memoria.erros.length > 0) {
+            const usuariosDir = path.join(__dirname, "..", "memoria_v4", "usuarios");
+            if (fs.existsSync(usuariosDir)) {
+                const arquivos = fs.readdirSync(usuariosDir).filter(f => f.endsWith(".json"));
+                for (const arquivo of arquivos) {
+                    const caminho = path.join(usuariosDir, arquivo);
+                    try {
+                        const conteudo = fs.readFileSync(caminho, "utf8");
+                        const dados = JSON.parse(conteudo);
+                        fs.writeFileSync(caminho, JSON.stringify(dados, null, 2), "utf8");
+                    } catch (e) {
+                        try {
+                            fs.renameSync(caminho, caminho + ".corrompido-" + Date.now());
+                            const memoriaPadrão = {
+                                id: arquivo.replace(".json", ""),
+                                criadoEm: new Date().toISOString(),
+                                atualizadoEm: new Date().toISOString(),
+                                perfil: {},
+                                preferencias: {},
+                                conhecimentos: [],
+                                conversas: [],
+                                resumo: "Resetado por auto-diagnóstico"
+                            };
+                            fs.writeFileSync(caminho, JSON.stringify(memoriaPadrão, null, 2), "utf8");
+                            consertado = true;
+                            console.log(`🔧 Auto-diagnóstico: memória '${arquivo}' resetada (corrompida).`);
+                        } catch (e2) {
+                            console.error(`❌ Não foi possível reparar '${arquivo}': ${e2.message}`);
+                        }
+                    }
+                }
+            }
+        }
+
+        // API inacessível -> apenas avisa
+        if (relatorio.check.api.erros && relatorio.check.api.erros.length > 0) {
+            console.warn(`⚠️ Auto-diagnóstico: API inacessível — ${relatorio.check.api.erros.join(", ")}`);
+        }
+
+        // Dependências ausentes -> avisa para rodar npm install
+        if (relatorio.check.dependencias.erros && relatorio.check.dependencias.erros.length > 0) {
+            console.warn(`⚠️ Auto-diagnóstico: dependências ausentes — ${relatorio.check.dependencias.erros.join(", ")}`);
+            console.log("   💡 Para reparar: rode 'npm install' no servidor.");
+        }
+
+        verificacaoAtiva = false;
+        const ok = relatorio.ok;
+        const tempo = Math.round((Date.now() - ultimaVerificacaoEm) / 1000);
+        console.log(`🔍 Auto-diagnóstico ${ok ? "✅" : "⚠️"} — ${tempo}s — ${ok ? "sistema operacional." : "problemas:" + relatorio.problemas.join("; ")}`);
+        ultimaVerificacaoEm = Date.now();
+    }
+
+    verificarEReparar();
+    const timer = setInterval(verificarEReparar, INTERVALO_SAUDEDADE_MS);
+
+    if (process.env.NODE_ENV === "development") {
+        console.log("🔧 Auto-diagnóstico ativo (intervalo de 15min).");
+    }
+
+    return { stop: () => clearInterval(timer) };
+}
+

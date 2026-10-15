@@ -1,10 +1,12 @@
-cat > telegram.js << 'FIM'
 // telegram.js — Bob AI X (versão JARVIS completa)
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
-const { registrar: registrarComandos, saudacaoPorHorario, detectarIntencao, executarIntencao } = require('./ia/comandos');
+const { registrar: registrarComandos, registrarAutoCheck, saudacaoPorHorario, detectarIntencao, executarIntencao } = require('./ia/comandos');
+
+// Inicializa o auto-diagnóstico (saúde do sistema, a cada 15 min)
+registrarAutoCheck(bot);
 
 const token = process.env.TELEGRAM_TOKEN || process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN;
 const apiKey = process.env.OPENROUTER_API_KEY || process.env.API_KEY || process.env.GROQ_API_KEY;
@@ -159,9 +161,7 @@ bot.on('message', async (msg) => {
     const text = msg.text;
 
     if (text === '/start') {
-        await enviarMensagemLonga(chatId, '👋 Olá Lindinaldo! — assistente ativo (Bob AI X).
-
-Envie qualquer texto, **foto** ou **arquivo (PDF/TXT)** para eu analisar!');
+        await enviarMensagemLonga(chatId, '👋 Olá Lindinaldo! — assistente ativo (Bob AI X).\n\nEnvie qualquer texto, **foto** ou **arquivo (PDF/TXT)** para eu analisar!');
 
         return;
     }
@@ -336,4 +336,3 @@ bot.on('polling_error', (error) => {
 });
 
 module.exports = bot;
-FIM
