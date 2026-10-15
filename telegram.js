@@ -1,3 +1,4 @@
+cat > telegram.js << 'FIM'
 // telegram.js — Bob AI X (versão JARVIS completa)
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
@@ -113,7 +114,7 @@ async function chamarOpenRouter(messages, eFoto = false) {
     throw ultimoErro || new Error('Nenhum modelo gratuito disponível no momento.');
 }
 
-// 🤖 Registra todos os comandos JARVIS (/status, /clima, /app, etc.)
+// 🤖 Registra todos os comandos JARVIS
 registrarComandos(bot, enviarMensagemLonga, chamarOpenRouter);
 
 // 🌅 ROTINA DA MANHÃ — Bob fala primeiro, como o JARVIS
@@ -335,3 +336,4 @@ bot.on('polling_error', (error) => {
 });
 
 module.exports = bot;
+FIM
