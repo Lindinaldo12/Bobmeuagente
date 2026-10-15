@@ -197,6 +197,49 @@ function registrar(bot, enviarMensagemLonga, chamarIA) {
             await enviarMensagemLonga(chatId, `⚠️ Erro ao criar o app: ${e.message}`);
         }
     });
+
+
+    // 📦 GERAR APK — aplicativo Android pronto para compilar
+    bot.onText(/\/apk (.+)/, async (msg, match) => {
+        const chatId = msg.chat.id;
+        const pedido = match[1].trim();
+        try {
+            await enviarMensagemLonga(chatId, "📦 Gerando o APK!", "Senhor...");
+            bot.sendChatAction(chatId, 'typing');
+
+            const { gerarZipApk } = require("../skills/apkcriador/skill.js");
+
+            const nomeApp = pedido.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+
+            gerarZipApk(nomeApp, "com.exemplo.app", (err, zipPath, qtde) => {
+                if (err) {
+                    return enviarMensagemLonga(chatId, "⚠️ Erro ao gerar o APK: " + err.message);
+                }
+
+                if (fs.existsSync(zipPath)) {
+                    const buffer = fs.readFileSync(zipPath);
+                    enviarMensagemLonga(chatId, "✅ *APK gerado com sucesso, Senhor!*\\n\\n"
+                        + "📦 *Arquivo:* " + nomeApp + ".apk\\n"
+                        + "📦 *Estrutura:* " + qtde + " arquivos\\n"
+                        + "📦 *Pacote:* com.exemplo.app\\n"
+                        + "📅 *Criado em:* " + new Date().toLocaleString("pt-BR") + "\\n\\n"
+                        + "📋 *Instruções de uso:*\\n"
+                        + "1. Baixe o arquivo " + nomeApp + ".apk\\n"
+                        + "2. Descompacte os arquivos\\n"
+                        + "3. Abra no Android Studio (File → New → Import Project)\\n"
+                        + "4. Conecte seu dispositivo ou use um emulador\\n"
+                        + "5. Clique em Run (▶️)\\n\\n"
+                        + "⚠️ *Nota:* O APK ainda precisa ser compilado no Android Studio.\\n"
+                        + "Ah, e não se esqueça de colocar sua chave OpenRouter em strings.xml.\\n\\n"
+                        + "❤️ Bob AI X — ajudando você a construir!");
+                }
+            });
+        } catch (e) {
+            await enviarMensagemLonga(chatId, "⚠️ Erro ao criar o APK: " + e.message);
+        }
+    });
+
+
 }
 
 // 🧠 DETECÇÃO DE INTENÇÃO — entende sem precisar de "/"
