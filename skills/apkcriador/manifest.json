@@ -2,5 +2,6 @@
     "nome": "Gerador de APK pronto",
     "versao": "1.0.0",
     "descricao": "Gera aplicativos Android .apk prontos para download e compilação, incluindo estrutura completa, código e instruções de build.",
-    "categoria": "Programação"
+    "categoria": "Programação",
+    "referências": ["SKILL.md"]
 }
