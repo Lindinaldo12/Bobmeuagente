@@ -36,7 +36,7 @@ process.env.USE_OLLAMA = 'false';
 
 // Carrega o módulo do Telegram
 try {
-    require('./telegram');
+    require('./connect/telegram/telegram');
     console.log('✅ Core do Telegram inicializado.');
 } catch (error) {
     console.error('❌ Erro ao carregar telegram.js:', error.message);
