@@ -1,0 +1,31 @@
+# Configuração do Hermes Agent
+# Este projeto substitui Bob pelo Hermes Agent completo
+
+# Configurações da IA
+ai:
+  base_url: ${AI_BASE_URL}
+  api_key: ${AI_API_KEY}
+  model: ${AI_MODEL}
+
+# Configuração do Telegram (o bot)
+telegram:
+  token: ${TELEGRAM_TOKEN}
+  admin_ids:
+    - ${MASTER_ID}
+
+# Configurações de segurança
+security:
+  access_password: ${ACCESS_PASSWORD}
+  master_id: ${MASTER_ID}
+  creator_chat_id: ${CRIADOR_CHAT_ID}
+
+# Configurações do agente
+agent:
+  max_historico: ${MAX_HISTORICO}
+  max_chars_arquivo: ${MAX_CHARS_ARQUIVO}
+  use_ollama: false
+
+# Modo de execução
+execution:
+  environment: render
+  port: 3000
