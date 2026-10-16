@@ -21,3 +21,13 @@ services:
         value: SUA_SENHA_AQUI
       - key: CRIADOR_CHAT_ID
         value: '8133082447'
+      - key: AI_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: AI_API_KEY
+        value: SEU_OPENROUTER_API_KEY_AQUI
+      - key: AI_MODEL
+        value: qwen/qwen-2.5-7b-instruct
+      - key: MAX_HISTORICO
+        value: '20'
+      - key: MAX_CHARS_ARQUIVO
+        value: '15000'
