@@ -11,7 +11,7 @@ description: >
   and per-user/chat allowlists.
 author: NousResearch
 requires_env:
-  - name: TELEGRAM_BOT_TOKEN
+  - name: TELEGRAM_TOKEN
     description: "Telegram bot token from @BotFather"
     prompt: "Telegram bot token"
     url: "https://t.me/BotFather"

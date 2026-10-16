@@ -36,7 +36,7 @@ _EXPLICIT_DISABLE_WARNED: set = set()
 
 # Env var(s) whose presence drives each platform's env-enable branch, named in the explicit-disable WARNING.
 _ENV_ENABLE_CREDENTIALS: dict = {
-    Platform.TELEGRAM: ("TELEGRAM_BOT_TOKEN",),
+    Platform.TELEGRAM: ("TELEGRAM_BOT_TOKEN", "TELEGRAM_TOKEN",),
     Platform.DISCORD: ("DISCORD_BOT_TOKEN",),
     Platform.SLACK: ("SLACK_BOT_TOKEN",),
     Platform.WHATSAPP: ("WHATSAPP_ENABLED",),
@@ -514,7 +514,7 @@ def _scrub_explicit_markers(config: GatewayConfig) -> None:
 # reply mode may create the entry first; Discord reads home first). Relay disabling runs after the
 # plugin pass; the marker scrub must be last.
 _ENV_STEPS: tuple = (
-    _Cred(Platform.TELEGRAM, ("TELEGRAM_BOT_TOKEN",), token="TELEGRAM_BOT_TOKEN"),
+    _Cred(Platform.TELEGRAM, ("TELEGRAM_BOT_TOKEN", "TELEGRAM_TOKEN"), token="TELEGRAM_TOKEN"),
     _ReplyMode(Platform.TELEGRAM, "TELEGRAM_REPLY_TO_MODE"),
     _telegram_fallback_ips,
     _Home(Platform.TELEGRAM, "TELEGRAM_HOME_CHANNEL"),

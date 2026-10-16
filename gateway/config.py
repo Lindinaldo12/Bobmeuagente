@@ -395,14 +395,19 @@ class ChannelOverride:
 # authenticate another way and must never be skipped for a missing token.
 # Platforms absent from this map authenticate some other way (session files, port-bound webhooks,
 # api_key-only) and must never be skipped for a missing token. See #64674.
-PLATFORM_TOKEN_ENV_NAMES: dict[Platform, str] = {
-    Platform.TELEGRAM: "TELEGRAM_BOT_TOKEN",
-    Platform.DISCORD: "DISCORD_BOT_TOKEN",
+# Values may be a single env var name (str) or a tuple of fallback names (tuple[str, ...]).
+_PLATFORM_TOKEN_ENV_NAMES: dict[Platform, str | tuple[str, ...]] = {
+    Platform.TELEGRAM: ("TELEGRAM_BOT_TOKEN", "TELEGRAM_TOKEN",),
+    Platform.DISCORD: ("DISCORD_BOT_TOKEN",),
     Platform.SLACK: "SLACK_BOT_TOKEN",
     Platform.MATTERMOST: "MATTERMOST_TOKEN",
     Platform.MATRIX: "MATRIX_ACCESS_TOKEN",
     Platform.WEIXIN: "WEIXIN_TOKEN",
 }
+
+
+# Backward-compatible alias for code that references the old name.
+PLATFORM_TOKEN_ENV_NAMES = _PLATFORM_TOKEN_ENV_NAMES
 
 
 @dataclass

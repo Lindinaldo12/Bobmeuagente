@@ -3243,7 +3243,7 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
                 message = (
                     f"Telegram bot token rejected: {safe_error}. "
                     "The token is invalid or was revoked — generate a new one "
-                    "with @BotFather and update TELEGRAM_BOT_TOKEN.")
+                    "with @BotFather and update TELEGRAM_TOKEN or TELEGRAM_BOT_TOKEN.")
                 self._set_fatal_error("telegram_auth_error", message, retryable=False)
             else:
                 self._set_fatal_error("telegram_connect_error", f"Telegram startup failed: {safe_error}", retryable=True)
@@ -7207,7 +7207,7 @@ def _is_connected(config) -> bool:
     token = getattr(config, "token", None)
     if not token:
         import hermes_cli.gateway as gateway_mod
-        token = gateway_mod.get_env_value("TELEGRAM_BOT_TOKEN") or ""
+        token = gateway_mod.get_env_value("TELEGRAM_TOKEN") or gateway_mod.get_env_value("TELEGRAM_BOT_TOKEN") or ""
     return bool(str(token).strip())
 
 
@@ -7217,7 +7217,7 @@ async def _standalone_send(pconfig, chat_id, message, *, thread_id=None, media_f
     token = getattr(pconfig, "token", None)
     if not token:
         from agent.secret_scope import get_secret  # profile-scoped: never borrow another profile's token
-        token = get_secret("TELEGRAM_BOT_TOKEN", "") or ""
+        token = get_secret("TELEGRAM_TOKEN", "") or get_secret("TELEGRAM_BOT_TOKEN", "") or ""
     disable_link_previews = bool(getattr(pconfig, "extra", {}) and pconfig.extra.get("disable_link_previews"))
     from tools.send_message_tool import _send_telegram
     return await _send_telegram(
@@ -7312,7 +7312,7 @@ def register(ctx) -> None:
     """Plugin entry point — called by the Hermes plugin system."""
     ctx.register_platform(
         name="telegram", label="Telegram", adapter_factory=_build_adapter, check_fn=telegram_deps_present,
-        ensure_deps_fn=check_telegram_requirements, is_connected=_is_connected, required_env=["TELEGRAM_BOT_TOKEN"],
+        ensure_deps_fn=check_telegram_requirements, is_connected=_is_connected, required_env=["TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKEN"],
         install_hint=t("platform.telegram.install_hint"), setup_fn=interactive_setup, apply_yaml_config_fn=_apply_yaml_config,
         allowed_users_env="TELEGRAM_ALLOWED_USERS", allow_all_env="TELEGRAM_ALLOW_ALL_USERS", cron_deliver_env_var="TELEGRAM_HOME_CHANNEL",
         standalone_sender_fn=_standalone_send, max_message_length=4096, emoji="✈️", allow_update_command=True)
