@@ -34,10 +34,8 @@ app.listen(PORT, () => {
 // Força a variável do Ollama para false
 process.env.USE_OLLAMA = 'false';
 
-// Carrega o módulo do Telegram
-try {
-    require('./connect/telegram/telegram');
-    console.log('✅ Core do Telegram inicializado.');
-} catch (error) {
-    console.error('❌ Erro ao carregar telegram.js:', error.message);
-}
+// Carrega e inicializa o módulo do Telegram
+const { criarBot } = require('./connect/telegram/telegram');
+console.log('✅ Core do Telegram inicializado.');
+criarBot();
+
