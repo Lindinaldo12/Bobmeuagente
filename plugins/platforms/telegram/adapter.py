@@ -12,6 +12,7 @@ from tools.memory_tool_telegram import memory_tool_tool
 from tools.web_tool_telegram import web_tool_tool
 from tools.code_tool_telegram import code_tool_tool
 from tools.agent_tool_telegram import agent_tool_tool
+from tools.cron_tool_telegram import cron_tool_tool
 import contextlib
 import dataclasses
 import inspect
@@ -6737,6 +6738,21 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
                     await self._send_text(msg.chat.id, "🌐 " + str(result_data.get("result", ""))[:3000], reply_to=msg.message_id)
                     return
             await self._send_text(msg.chat.id, "Web falhou: " + result_data.get("error", result), reply_to=msg.message_id)
+            return
+        # Cron (cron): /cron list (listar), /cron add "<name>" "<schedule>" "<command>", /cron remove "<name>", /cron run "<name>".
+        if command in {"/cron", "/cron_jobs", "/cron_job", "/schedule", "/agendador"}:
+            parts = text.split(maxsplit=1)
+            prompt = parts[1].strip() if len(parts) > 1 else None
+            result = cron_tool_tool(prompt)
+            try:
+                result_data = json.loads(result)
+            except json.JSONDecodeError:
+                result_data = {"success": False, "error": result}
+            if result_data.get("success"):
+                if "result" in result_data:
+                    await self._send_text(msg.chat.id, "⏰ " + str(result_data["result"][:3000]), reply_to=msg.message_id)
+                    return
+            await self._send_text(msg.chat.id, "Cron falhou: " + result_data.get("error", result), reply_to=msg.message_id)
             return
         event = await self._build_triggered_event(msg, update, MessageType.COMMAND)
         # A >4096-char command paste arrives as a near-limit COMMAND chunk plus TEXT continuations; dispatching
