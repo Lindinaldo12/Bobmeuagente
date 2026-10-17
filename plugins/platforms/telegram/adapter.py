@@ -3,6 +3,7 @@
 import asyncio
 from tools.image_generation_tool import image_generate_tool
 from tools.currency_tool import currency_quote_tool
+from tools.flashcards_tool import flashcards_tool
 import contextlib
 import dataclasses
 import inspect
@@ -6539,6 +6540,30 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
                 await self._send_text(msg.chat.id, result_data.get("quote", ""), reply_to=msg.message_id)
             else:
                 await self._send_text(msg.chat.id, "Não foi possível obter a cotação: " + result_data.get("error", ""), reply_to=msg.message_id)
+            return
+        # Flashcards (flashcards): /flashcards adicionar pergunta resposta, /flashcards listar,
+        # /flashcards testar [quantidade], /flashcards score <n> <nota 0-10>.
+        if command in {"/flashcards", "/flash", "/flashcard", "/flashcards"}:
+            parts = text.split(maxsplit=1)
+            prompt = parts[1].strip() if len(parts) > 1 else "listar"
+            result = flashcards_tool(prompt)
+            try:
+                result_data = json.loads(result)
+            except json.JSONDecodeError:
+                result_data = {"success": False, "error": result}
+            if result_data.get("success"):
+                if "message" in result_data:
+                    await self._send_text(msg.chat.id, result_data["message"], reply_to=msg.message_id)
+                elif "cards" in result_data:
+                    cards = result_data["cards"]
+                    lines = ["📚 Flashcards (" + str(result_data.get("total", len(cards))) + "):"] + [
+                        "  " + str(c["n"]) + ". " + c["question"] + " [" + str(c.get("score", "—")) + "]" for c in cards
+                    ]
+                    await self._send_text(msg.chat.id, "\n".join(lines), reply_to=msg.message_id)
+                else:
+                    await self._send_text(msg.chat.id, str(result_data), reply_to=msg.message_id)
+            else:
+                await self._send_text(msg.chat.id, "Flashcard: " + result_data.get("error", result), reply_to=msg.message_id)
             return
         event = await self._build_triggered_event(msg, update, MessageType.COMMAND)
         # A >4096-char command paste arrives as a near-limit COMMAND chunk plus TEXT continuations; dispatching
