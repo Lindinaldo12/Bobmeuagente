@@ -6,9 +6,10 @@ from tools.currency_tool import currency_quote_tool
 from tools.web_search_tool import web_tool_tool
 from tools.tts_tool_telegram import tts_tool_tool
 from tools.flashcards_tool import flashcards_tool
-from tools.skills_tool_telegram import skills_tool_tool
 from tools.video_tool_telegram import video_tool_tool
-from tools.file_tool_telegram import file_tool_tool
+from tools.skills_tool_telegram import skills_tool_tool
+from tools.memory_tool_telegram import memory_tool_tool
+from tools.agent_tool_telegram import agent_tool_tool
 import contextlib
 import dataclasses
 import inspect
@@ -6667,6 +6668,42 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
                     await self._send_text(msg.chat.id, "✅ " + result_data["message"], reply_to=msg.message_id)
                     return
             await self._send_text(msg.chat.id, "Falha na operação de arquivo: " + result_data.get("error", result), reply_to=msg.message_id)
+            return
+        # Memory (memória): /memoria add "chave" "valor", /memoria get "chave", /memoria remove "chave", /memoria list.
+        if command in {"/memoria", "/memory"}:
+            parts = text.split(maxsplit=1)
+            prompt = parts[1].strip() if len(parts) > 1 else None
+            result = memory_tool_tool(prompt)
+            try:
+                result_data = json.loads(result)
+            except json.JSONDecodeError:
+                result_data = {"success": False, "error": result}
+            if result_data.get("success"):
+                if "result" in result_data:
+                    await self._send_text(msg.chat.id, "🧠 " + str(result_data["result"][:500]), reply_to=msg.message_id)
+                    return
+            await self._send_text(msg.chat.id, "Memória falhou: " + result_data.get("error", result), reply_to=msg.message_id)
+            return
+        # Agents (agentes): /agente list (listar), /agente set "nome" (ativar), /agente view "nome" (ver detalhes).
+        if command in {"/agente", "/agente_switch", "/agent"}:
+            parts = text.split(maxsplit=1)
+            prompt = parts[1].strip() if len(parts) > 1 else None
+            result = agent_tool_tool(prompt)
+            try:
+                result_data = json.loads(result)
+            except json.JSONDecodeError:
+                result_data = {"success": False, "error": result}
+            if result_data.get("success"):
+                if "agent" in result_data:
+                    agent = result_data["agent"]
+                    await self._send_text(msg.chat.id, f"🤖 {agent['name']}\n{agent['description']}", reply_to=msg.message_id)
+                    return
+                if "agents" in result_data:
+                    agents = result_data["agents"]
+                    lines = ["🤖 Agentes disponíveis:"] + [f"  {a['name']} - {a['description']}" for a in agents]
+                    await self._send_text(msg.chat.id, "\n".join(lines), reply_to=msg.message_id)
+                    return
+            await self._send_text(msg.chat.id, "Agente falhou: " + result_data.get("error", result), reply_to=msg.message_id)
             return
         event = await self._build_triggered_event(msg, update, MessageType.COMMAND)
         # A >4096-char command paste arrives as a near-limit COMMAND chunk plus TEXT continuations; dispatching
