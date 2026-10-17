@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: Bob AI X
+    name: bob-ai-x
     env: python
     buildCommand: uv sync
     startCommand: python run_agent.py
@@ -8,7 +8,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: '3000'
+        value: "3000"
       - key: TELEGRAM_TOKEN
         value: SEU_TELEGRAM_BOT_TOKEN_AQUI
       - key: OPENROUTER_API_KEY
@@ -16,11 +16,11 @@ services:
       - key: MASTER_ID
         value: SEU_ID_TELEGRAM_AQUI
       - key: ADMIN_IDS
-        value: '["seu_id_admin"]'
+        value: '["SEU_ID_ADMIN"]'
       - key: ACCESS_PASSWORD
         value: SUA_SENHA_AQUI
       - key: CRIADOR_CHAT_ID
-        value: '8133082447'
+        value: "8133082447"
       - key: AI_BASE_URL
         value: https://openrouter.ai/api/v1
       - key: AI_API_KEY
@@ -28,6 +28,6 @@ services:
       - key: AI_MODEL
         value: qwen/qwen-2.5-7b-instruct
       - key: MAX_HISTORICO
-        value: '20'
+        value: "100"
       - key: MAX_CHARS_ARQUIVO
-        value: '15000'
+        value: "10000"
