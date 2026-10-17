@@ -6581,7 +6581,12 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
         if command in {"/buscar", "/pesquisar", "/pesquisa", "/search", "/lookup"}:
             parts = text.split(maxsplit=1)
             prompt = parts[1].strip() if len(parts) > 1 else None
-            result = web_tool_tool(prompt)
+            # Prepend "buscar" to the query for the web tool
+            if prompt:
+                full_prompt = f"buscar {prompt}"
+            else:
+                full_prompt = "buscar"
+            result = web_tool_tool(full_prompt)
             try:
                 result_data = json.loads(result)
             except json.JSONDecodeError:

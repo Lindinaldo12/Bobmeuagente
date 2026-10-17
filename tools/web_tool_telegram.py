@@ -33,12 +33,16 @@ def _parse_prompt(prompt: Optional[str]) -> tuple[Optional[str], str]:
         extract "<url>"                -> extract readable text from URL
         open "<url>"                   -> open URL in browser
         search "<query>"               -> web search (uses web_search_tool)
+        buscar "<query>"               -> web search (alias for search)
     """
     if not prompt:
         return None, ""
     parts = prompt.strip().split(maxsplit=1)
     action = parts[0].lower() if parts else ""
     args = parts[1].strip() if len(parts) > 1 else ""
+    # Map "buscar" and "pesquisar" to "search"
+    if action in {"buscar", "pesquisar", "pesquisa"}:
+        return "search", args
     return action, args
 
 
@@ -130,12 +134,9 @@ def web_tool_tool(prompt: Optional[str] = None) -> str:
         elif action == "search":
             if not args:
                 return json.dumps({"success": False, "error": "Use: /web search <query>"})
-            # Delegate to web_search_tool
-            try:
-                from tools import web_search_tool as wst
-                return wst.web_tool_tool(args)
-            except Exception as exc:
-                return json.dumps({"success": False, "error": f"Web search failed: {exc}"})
+            # Delegate to web_search_tool with "buscar" prefix
+            from tools import web_search_tool as wst
+            return wst.web_tool_tool(f"buscar {args}")
 
         else:
             return json.dumps({"success": False, "error": f"Ação desconhecida: {action}. Use fetch, extract, open ou search."})
