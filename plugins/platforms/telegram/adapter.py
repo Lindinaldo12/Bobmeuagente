@@ -3,6 +3,8 @@
 import asyncio
 from tools.image_generation_tool import image_generate_tool
 from tools.currency_tool import currency_quote_tool
+from tools.web_search_tool import web_tool_tool
+from tools.tts_tool_telegram import tts_tool_tool
 from tools.flashcards_tool import flashcards_tool
 import contextlib
 import dataclasses
@@ -6564,6 +6566,45 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
                     await self._send_text(msg.chat.id, str(result_data), reply_to=msg.message_id)
             else:
                 await self._send_text(msg.chat.id, "Flashcard: " + result_data.get("error", result), reply_to=msg.message_id)
+            return
+        # Web search (busca na web): /buscar termo, /buscar [tavily|firecrawl|exa|parallel|searxng] termo.
+        if command in {"/buscar", "/pesquisar", "/pesquisa", "/search", "/lookup"}:
+            parts = text.split(maxsplit=1)
+            prompt = parts[1].strip() if len(parts) > 1 else None
+            result = web_tool_tool(prompt)
+            try:
+                result_data = json.loads(result)
+            except json.JSONDecodeError:
+                result_data = {"success": False, "error": result}
+            if result_data.get("success"):
+                results = result_data.get("results", [])
+                if isinstance(results, list):
+                    lines = ["🔍 Busca:"] + [f"  {i+1}. {r.get('title', 'sem titulo')} — {r.get('snippet', '')[:200]}" for i, r in enumerate(results[:5])]
+                    await self._send_text(msg.chat.id, "\n".join(lines), reply_to=msg.message_id)
+                else:
+                    await self._send_text(msg.chat.id, str(result_data), reply_to=msg.message_id)
+            else:
+                await self._send_text(msg.chat.id, "Busca falhou: " + result_data.get("error", result), reply_to=msg.message_id)
+            return
+        # Text-to-speech (falar): /falar "texto", /falar [edge|elevenlabs|openai|deepinfra|minimax|mistral|gemini|xai|local] texto.
+        if command in {"/falar", "/fale", "/fala", "/speak", "/dizer", "/diga"}:
+            parts = text.split(maxsplit=1)
+            prompt = parts[1].strip() if len(parts) > 1 else None
+            result = tts_tool_tool(prompt)
+            try:
+                result_data = json.loads(result)
+            except json.JSONDecodeError:
+                result_data = {"success": False, "error": result}
+            if result_data.get("success"):
+                file_path = result_data.get("file_path") or result_data.get("audio_url")
+                if file_path and os.path.exists(file_path):
+                    await self.send_voice(msg.chat.id, file_path, caption=result_data.get("provider", "voz gerada"))
+                    try:
+                        os.remove(file_path)
+                    except OSError:
+                        pass
+                    return
+            await self._send_text(msg.chat.id, "Falha na geração de áudio: " + result_data.get("error", result), reply_to=msg.message_id)
             return
         event = await self._build_triggered_event(msg, update, MessageType.COMMAND)
         # A >4096-char command paste arrives as a near-limit COMMAND chunk plus TEXT continuations; dispatching
