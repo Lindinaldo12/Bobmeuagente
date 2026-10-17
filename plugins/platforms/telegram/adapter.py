@@ -2,6 +2,7 @@
 
 import asyncio
 from tools.image_generation_tool import image_generate_tool
+from tools.currency_tool import currency_quote_tool
 import contextlib
 import dataclasses
 import inspect
@@ -6524,6 +6525,20 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
             image_url = await self._generate_and_send_image(prompt, msg.chat.id)
             if not image_url:
                 await self._send_text(msg.chat.id, "Não foi possível gerar a imagem. Tente novamente ou me diga se você tem FAL_KEY configurado.", reply_to=msg.message_id)
+            return
+        # Currency quotation (cotação de moedas): e.g. /cotação usd brl, /cotação dólar, /cotacao.
+        if command in {"/cotação", "/cotacao", "/exchange", "/dolar"}:
+            parts = text.split(maxsplit=1)
+            prompt = parts[1].strip() if len(parts) > 1 else None
+            result = currency_quote_tool(prompt)
+            try:
+                result_data = json.loads(result)
+            except json.JSONDecodeError:
+                result_data = {"success": False, "error": result}
+            if result_data.get("success"):
+                await self._send_text(msg.chat.id, result_data.get("quote", ""), reply_to=msg.message_id)
+            else:
+                await self._send_text(msg.chat.id, "Não foi possível obter a cotação: " + result_data.get("error", ""), reply_to=msg.message_id)
             return
         event = await self._build_triggered_event(msg, update, MessageType.COMMAND)
         # A >4096-char command paste arrives as a near-limit COMMAND chunk plus TEXT continuations; dispatching
