@@ -7,6 +7,7 @@ from tools.web_search_tool import web_tool_tool
 from tools.tts_tool_telegram import tts_tool_tool
 from tools.flashcards_tool import flashcards_tool
 from tools.video_tool_telegram import video_tool_tool
+from tools.skills_tool_telegram import skills_tool_tool
 import contextlib
 import dataclasses
 import inspect
@@ -6622,6 +6623,31 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
                     await self.send_document(msg.chat.id, video_url, caption="🎬 Vídeo gerado com sucesso!")
                     return
             await self._send_text(msg.chat.id, "Falha na geração de vídeo: " + result_data.get("error", result), reply_to=msg.message_id)
+            return
+        # Skills (habilidades): /skill list (listar), /skill view "nome", /skill "nome" (executa).
+        if command in {"/skill", "/habilidade", "/skill_list", "/list_skills", "/mostrar_habilidades"}:
+            parts = text.split(maxsplit=1)
+            prompt = parts[1].strip() if len(parts) > 1 else "list"
+            result = skills_tool_tool(prompt)
+            try:
+                result_data = json.loads(result)
+            except json.JSONDecodeError:
+                result_data = {"success": False, "error": result}
+            if result_data.get("success"):
+                skills = result_data.get("skills", []) if isinstance(result_data.get("skills"), list) else []
+                if "content" in result_data:
+                    # Single skill view
+                    content = result_data.get("content", "")
+                    front = result_data.get("frontmatter", {})
+                    await self._send_text(msg.chat.id, f"*SKILL: {result_data.get('name', 'sem nome')}*\n\n" + content[:3000], reply_to=msg.message_id)
+                    return
+                if "count" in result_data:
+                    lines = [f"📚 Habilidades ({result_data.get('count', len(skills))}):"] + [f"  {s.get('name', '?')} ({s.get('category', ' NOSSO ')}) - {s.get('description', '')[:80]}" for s in skills[:30]]
+                    if len(skills) > 30:
+                        lines.append(f"\n... e mais {len(skills) - 30} habilidades. Use /skill \"nome\" para ver detalhes.")
+                    await self._send_text(msg.chat.id, "\n".join(lines), reply_to=msg.message_id)
+                    return
+            await self._send_text(msg.chat.id, "Habilidade falhou: " + result_data.get("error", result), reply_to=msg.message_id)
             return
         event = await self._build_triggered_event(msg, update, MessageType.COMMAND)
         # A >4096-char command paste arrives as a near-limit COMMAND chunk plus TEXT continuations; dispatching
