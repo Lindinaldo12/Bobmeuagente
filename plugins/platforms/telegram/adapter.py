@@ -6,6 +6,7 @@ from tools.currency_tool import currency_quote_tool
 from tools.web_search_tool import web_tool_tool
 from tools.tts_tool_telegram import tts_tool_tool
 from tools.flashcards_tool import flashcards_tool
+from tools.video_tool_telegram import video_tool_tool
 import contextlib
 import dataclasses
 import inspect
@@ -6605,6 +6606,22 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
                         pass
                     return
             await self._send_text(msg.chat.id, "Falha na geração de áudio: " + result_data.get("error", result), reply_to=msg.message_id)
+            return
+        # Video generation (vídeo): /gerar_video "prompt", /video_generator "prompt", /imagine_video "prompt".
+        if command in {"/gerar_video", "/video", "/video_generator", "/video_gen", "/imagine_video", "/video_generator"}:
+            parts = text.split(maxsplit=1)
+            prompt = parts[1].strip() if len(parts) > 1 else None
+            result = video_tool_tool(prompt)
+            try:
+                result_data = json.loads(result)
+            except json.JSONDecodeError:
+                result_data = {"success": False, "error": result}
+            if result_data.get("success"):
+                video_url = result_data.get("video_url")
+                if video_url:
+                    await self.send_document(msg.chat.id, video_url, caption="🎬 Vídeo gerado com sucesso!")
+                    return
+            await self._send_text(msg.chat.id, "Falha na geração de vídeo: " + result_data.get("error", result), reply_to=msg.message_id)
             return
         event = await self._build_triggered_event(msg, update, MessageType.COMMAND)
         # A >4096-char command paste arrives as a near-limit COMMAND chunk plus TEXT continuations; dispatching
