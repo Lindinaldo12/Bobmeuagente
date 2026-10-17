@@ -1,6 +1,7 @@
 """Telegram platform adapter (python-telegram-bot): inbound messages/media/commands, outbound replies."""
 
 import asyncio
+from tools.image_generation_tool import image_generate_tool
 import contextlib
 import dataclasses
 import inspect
@@ -12,7 +13,7 @@ import re
 import time
 from contextvars import ContextVar
 from datetime import datetime, timezone, UTC
-from typing import Any, Awaitable, Callable, Dict, Iterator, List, Optional, Set
+from typing import Any, Awaitable, Callable, Dict, Iterator, List, Optional, Set, Union
 from hermes_cli import setup_platforms
 
 logger = logging.getLogger(__name__)
@@ -5431,6 +5432,23 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
                 logger.error("[%s] File upload send_photo also failed: %s", self.name, e2, exc_info=True)
                 return await super().send_image(chat_id, image_url, caption, reply_to, metadata=metadata)
 
+    async def _generate_and_send_image(self, prompt: Optional[str], chat_id: Union[str, int]) -> Optional[str]:
+        """Generate an image from a prompt and send it back to the user. Returns the image URL or None."""
+        if not prompt:
+            return None
+        try:
+            result = image_generate_tool(prompt=prompt)
+            result_data = json.loads(result)
+            if not result_data.get("success") or not result_data.get("image"):
+                logger.error("[%s] Image generation failed: %s", self.name, result_data.get("error"))
+                return None
+            image_url = result_data["image"]
+            await self.send_image(chat_id, image_url, caption=prompt[:200] + "..." if len(prompt) > 200 else prompt)
+            return image_url
+        except Exception as e:
+            logger.error("[%s] Failed to generate and send image: %s", self.name, _redact_telegram_error_text(e), exc_info=True)
+            return None
+
     async def send_animation(
         self, chat_id: str, animation_url: str, caption: Optional[str] = None, reply_to: Optional[str] = None,
         metadata: Optional[dict[str, Any]] = None) -> SendResult:
@@ -6478,7 +6496,12 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
         self._enqueue_text_event(await self._build_triggered_event(msg, update, MessageType.TEXT))
 
     async def _handle_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle incoming command messages."""
+        """Handle incoming command messages.
+
+        Known image-generation commands (/desenhar, /imagem, /imagine, /image, /desenho, /draw)
+        are intercepted here and routed directly to the image generation tool so the bot draws
+        instead of routing through the agent planner and explaining in text.
+        """
         msg = self._effective_update_message(update)
         if not msg or not msg.text:
             return
@@ -6488,6 +6511,20 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
             self._log_blocked_user(msg)
             return
         await self._ensure_forum_commands(msg)
+
+        # Intercept known image-generation commands and route them directly to tool.
+        text = msg.text.strip()
+        command = text.split(maxsplit=1)[0].lower()
+        image_commands = {"/desenhar", "/desenho", "/imagem", "/imagine", "/draw", "/image"}
+        prompt = None
+        if command in image_commands:
+            parts = text.split(maxsplit=1)
+            if len(parts) > 1:
+                prompt = parts[1].strip()
+            image_url = await self._generate_and_send_image(prompt, msg.chat.id)
+            if not image_url:
+                await self._send_text(msg.chat.id, "Não foi possível gerar a imagem. Tente novamente ou me diga se você tem FAL_KEY configurado.", reply_to=msg.message_id)
+            return
         event = await self._build_triggered_event(msg, update, MessageType.COMMAND)
         # A >4096-char command paste arrives as a near-limit COMMAND chunk plus TEXT continuations; dispatching
         # immediately would orphan them. Near-limit commands go through text batching.

@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+build/
+develop-eggs/
+dist/
+*.egg
+
+# Virtual environments
+venv/
+.env/
+.venv/
+
+# Hermes Agent specific
+.bytecode-fingerprint
+.hermes/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
