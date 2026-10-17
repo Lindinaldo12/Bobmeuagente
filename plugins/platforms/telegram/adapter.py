@@ -16,6 +16,9 @@ from tools.cron_tool_telegram import cron_tool_tool
 from tools.browser_tool_telegram import browser_tool_tool
 from tools.weather_tool_telegram import weather_tool_tool
 from tools.analyze_tool_telegram import analyze_tool_tool
+from tools.news_tool_telegram import news_tool_tool
+from tools.calendar_tool_telegram import calendar_tool_tool
+from tools.tasks_tool_telegram import tasks_tool_tool
 import contextlib
 import dataclasses
 import inspect
@@ -3698,6 +3701,10 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
             classified = self._classify_send_exception(e, error_types)
             return self._with_partial_send(classified, chunks[len(delivered):], delivered, tail_certain=classified.retryable)
 
+    async def _send_text(self, chat_id: str, content: str, reply_to: Optional[str] = None) -> SendResult:
+        "Alias for _send_text_locked (used throughout the adapter)."
+        return await self._send_text_locked(chat_id, content, reply_to, None)
+
     def _classify_send_exception(self, e: Exception, error_types: tuple) -> SendResult:
         """The failed ``SendResult`` for an exception escaping the chunk loop. ``retryable`` doubles as
         "non-delivery is certain": a plain ``TimedOut`` may have reached Telegram, so it is neither re-sent
@@ -6600,6 +6607,73 @@ class TelegramAdapter(TelegramHeldInboundMixin, BasePlatformAdapter):
                     await self._send_text(msg.chat.id, str(result_data), reply_to=msg.message_id)
             else:
                 await self._send_text(msg.chat.id, "Busca falhou: " + result_data.get("error", result), reply_to=msg.message_id)
+            return
+        # News (noticias): /noticias list, /noticias <query>.
+        if command in {"/noticias", "/noticias_"}:
+            parts = text.split(maxsplit=1)
+            prompt = parts[1].strip() if len(parts) > 1 else None
+            result = news_tool_tool(prompt)
+            try:
+                result_data = json.loads(result)
+            except json.JSONDecodeError:
+                result_data = {"success": False, "error": result}
+            if result_data.get("success"):
+                results = result_data.get("results", [])
+                if isinstance(results, list):
+                    lines = [f"📰 {r.get('title', 'sem titulo')}" for i, r in enumerate(results[:10])]
+                    if lines:
+                        lines[0] = f"📰 {results[0].get('title', 'sem titulo')}"
+                    await self._send_text(msg.chat.id, "\n".join(lines), reply_to=msg.message_id)
+                else:
+                    await self._send_text(msg.chat.id, str(result_data), reply_to=msg.message_id)
+            else:
+                await self._send_text(msg.chat.id, "Busca falhou: " + result_data.get("error", result), reply_to=msg.message_id)
+            return
+        # Calendar (calendario): /calendario add \"2026-10-20 15:00\" \"Reunião\" \"Descrição\", /calendario list, /calendario delete <id>.
+        if command in {"/calendario", "/calendario_add", "/cadastro_ano"}:
+            parts = text.split(maxsplit=1)
+            prompt = parts[1].strip() if len(parts) > 1 else None
+            result = calendar_tool_tool(prompt)
+            try:
+                result_data = json.loads(result)
+            except json.JSONDecodeError:
+                result_data = {"success": False, "error": result}
+            if result_data.get("success"):
+                if "event_id" in result_data:
+                    await self._send_text(msg.chat.id, result_data["message"], reply_to=msg.message_id)
+                elif "events" in result_data:
+                    events = result_data["events"]
+                    if events:
+                        lines = [f"{e['date']} {e['time']} - {e['name']}" for e in events[:10]]
+                        await self._send_text(msg.chat.id, "\n".join(lines), reply_to=msg.message_id)
+                    else:
+                        await self._send_text(msg.chat.id, "Nenhum evento encontrado.", reply_to=msg.message_id)
+                else:
+                    await self._send_text(msg.chat.id, str(result_data), reply_to=msg.message_id)
+            else:
+                await self._send_text(msg.chat.id, result_data.get("error", result), reply_to=msg.message_id)
+            return
+        # Tasks (tarefas): /tarefa add \"Tarefa\" \"Descrição\", /tarefa list, /tarefa done <id>, /tarefa delete <id>.
+        if command in {"/tarefa", "/tasks", "/tarefas"}:
+            parts = text.split(maxsplit=1)
+            prompt = parts[1].strip() if len(parts) > 1 else None
+            result = tasks_tool_tool(prompt)
+            try:
+                result_data = json.loads(result)
+            except json.JSONDecodeError:
+                result_data = {"success": False, "error": result}
+            if result_data.get("success"):
+                if "tasks" in result_data:
+                    tasks = result_data["tasks"]
+                    if tasks:
+                        lines = [f"{t['id']} - {t['title']}" for t in tasks[:10]]
+                        await self._send_text(msg.chat.id, "\n".join(lines), reply_to=msg.message_id)
+                    else:
+                        await self._send_text(msg.chat.id, "Nenhuma tarefa encontrada.", reply_to=msg.message_id)
+                else:
+                    await self._send_text(msg.chat.id, result_data.get("message", ""), reply_to=msg.message_id)
+            else:
+                await self._send_text(msg.chat.id, result_data.get("error", result), reply_to=msg.message_id)
             return
         # Text-to-speech (falar): /falar "texto", /falar [edge|elevenlabs|openai|deepinfra|minimax|mistral|gemini|xai|local] texto.
         if command in {"/falar", "/fale", "/fala", "/speak", "/dizer", "/diga"}:
