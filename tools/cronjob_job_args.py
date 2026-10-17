@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Union
 
-from cron.jobs import effective_job_state
+from tools.cron.jobs import effective_job_state
 
 import hermes_time
 
@@ -33,7 +33,7 @@ def _first_fire_within_thread_horizon(
     else:
         parsed = None
         with contextlib.suppress(Exception):
-            from cron.jobs import parse_schedule
+            from tools.cron.jobs import parse_schedule
 
             parsed = parse_schedule(schedule)
     if not isinstance(parsed, dict) or parsed.get("kind") != "once":
@@ -456,7 +456,7 @@ def _apply_continuity(
 def _validate_context_from_refs(refs: list[Any]) -> Optional[str]:
     """Error string if any non-"self" ref names a missing job ("self" resolves to the job's
     own id at run time, so it can't be checked — the job doesn't exist yet at create)."""
-    from cron.jobs import get_job as _get_job
+    from tools.cron.jobs import get_job as _get_job
     for ref_id in refs:
         if isinstance(ref_id, str) and ref_id.strip().lower() == "self":
             continue

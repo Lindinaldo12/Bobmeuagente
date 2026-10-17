@@ -30,8 +30,8 @@ _CRON_RUN_HEARTBEAT_INTERVAL = 10.0
 _CRON_RUN_HEARTBEAT_CEILING = 6 * 3600.0
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from cron.jobs import (
+import tools.cron.jobs as cron_jobs
+from tools.cron.jobs import (
     AmbiguousJobReference,
     claim_job_for_fire,
     get_job,
@@ -452,7 +452,7 @@ def _latest_job_output_excerpt(job_id: str, max_chars: int = 2000) -> Optional[s
     """Excerpt of the job's most recent saved output file for the background completion
     block (parent sees what the job produced). Never raises."""
     try:
-        from cron.jobs import get_cron_output_dir
+        from tools.cron.jobs import get_cron_output_dir
 
         out_dir = get_cron_output_dir() / job_id
         files = sorted(out_dir.glob("*.md"))
@@ -921,7 +921,7 @@ def _update_run_fields(job: dict[str, Any], a: dict[str, Any], updates: dict[str
         updates["no_agent"] = target_no_agent
     if a["repeat"] is not None:
         # Shared chokepoint coerces string forms ('forever'/'once'/'3') and 0/negative.
-        from cron.jobs import normalize_repeat_value
+        from tools.cron.jobs import normalize_repeat_value
         repeat_state = dict(job.get("repeat") or {})
         repeat_state["times"] = normalize_repeat_value(a["repeat"])
         updates["repeat"] = repeat_state
