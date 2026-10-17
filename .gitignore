@@ -26,5 +26,5 @@ Thumbs.db
 *.swo
 *~
 
-# Logs
-*.log
+# Generated data (user flashcards)
+flashcards.json
