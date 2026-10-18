@@ -5,11 +5,6 @@ from tools.image_generation_tool import image_generate_tool
 from tools.currency_tool import currency_quote_tool
 from tools.web_search_tool import web_tool_tool
 from tools.tts_tool_telegram import tts_tool_tool
-from tools.flashcards_tool import flashcards_tool
-from tools.video_tool_telegram import video_tool_tool
-from tools.skills_tool_telegram import skills_tool_tool
-from tools.memory_tool_telegram import memory_tool_tool
-from tools.web_tool_telegram import web_tool_tool
 from tools.code_tool_telegram import code_tool_tool
 from tools.agent_tool_telegram import agent_tool_tool
 from tools.cron_tool_telegram import cron_tool_tool
@@ -19,6 +14,8 @@ from tools.analyze_tool_telegram import analyze_tool_tool
 from tools.news_tool_telegram import news_tool_tool
 from tools.calendar_tool_telegram import calendar_tool_tool
 from tools.tasks_tool_telegram import tasks_tool_tool
+from tools.flashcards_tool import flashcards_tool
+from tools.file_tools import file_tool_tool
 import contextlib
 import dataclasses
 import inspect

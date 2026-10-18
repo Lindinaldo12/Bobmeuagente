@@ -1418,3 +1418,155 @@ def _patch_schema_overrides():
 
 registry.register(name="patch", toolset="file", schema=PATCH_SCHEMA, handler=_handle_patch, check_fn=_check_file_reqs, emoji="🔧", max_result_size_chars=100_000, dynamic_schema_overrides=_patch_schema_overrides)
 registry.register(name="search_files", toolset="file", schema=SEARCH_FILES_SCHEMA, handler=_handle_search_files, check_fn=_check_file_reqs, emoji="🔎", max_result_size_chars=100_000)
+
+
+def file_tool_tool(prompt: Optional[str] = None) -> str:
+    """
+    Unified file operation handler for Telegram commands.
+    Parses the prompt to determine the operation and performs direct file I/O.
+    Returns a JSON string with 'success', 'content'/'message'/'error' keys.
+    Uses direct file I/O instead of the complex terminal_tool dependency.
+    """
+    if not prompt:
+        return json.dumps({"success": False, "error": "Nenhum prompt fornecido"})
+
+    # Split command and arguments
+    parts = prompt.strip().split(maxsplit=1)
+    command = parts[0].lower() if parts else ""
+    args = parts[1].strip() if len(parts) > 1 else ""
+
+    try:
+        if command in {"read", "ler"}:
+            if not args:
+                return json.dumps({"success": False, "error": "Caminho do arquivo não especificado"})
+            return _read_file_direct(args)
+
+        elif command in {"write", "escrever"}:
+            if not args:
+                return json.dumps({"success": False, "error": "Caminho e conteúdo não especificados"})
+            import shlex
+            try:
+                write_parts = shlex.split(args)
+            except ValueError:
+                return json.dumps({"success": False, "error": "Formato de escrita inválido"})
+            if len(write_parts) < 2:
+                return json.dumps({"success": False, "error": "Caminho e conteúdo não especificados"})
+            path = write_parts[0]
+            content = " ".join(write_parts[1:])
+            return _write_file_direct(path, content)
+
+        elif command in {"list", "listar"}:
+            if not args:
+                return json.dumps({"success": False, "error": "Caminho do diretório não especificado"})
+            return _list_dir_direct(args)
+
+        elif command in {"search", "buscar"}:
+            if not args:
+                return json.dumps({"success": False, "error": "Padrão de busca não especificado"})
+            search_parts = args.split(maxsplit=1)
+            pattern = search_parts[0]
+            filepath = search_parts[1] if len(search_parts) > 1 else "."
+            return _search_file_direct(pattern, filepath)
+
+        else:
+            return json.dumps({"success": False, "error": f"Comando de arquivo desconhecido: {command}"})
+
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+# ── Direct file I/O fallback (bypasses terminal_tool dependency) ─────────────
+def _read_file_direct(path: str, offset: int = 1, limit: int = 100000) -> str:
+    """Read a file directly without terminal environment dependency."""
+    import os
+    path = os.path.expanduser(path)
+    path = os.path.abspath(path)
+    if not os.path.exists(path):
+        return json.dumps({"success": False, "error": f"File not found: {path}"})
+    try:
+        with open(path, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read()
+        total_lines = content.count('\n') + 1
+        if offset > 1 or limit < len(content.splitlines(keepends=True)):
+            lines = content.splitlines(keepends=True)
+            lines = lines[offset-1:offset-1+limit]
+            content = ''.join(lines)
+            total_lines = len(lines)
+        result_dict = {
+            "success": True,
+            "content": content,
+            "total_lines": total_lines,
+            "file_size": os.path.getsize(path),
+        }
+        return json.dumps(result_dict, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+def _write_file_direct(path: str, content: str) -> str:
+    """Write a file directly without terminal environment dependency."""
+    import os
+    path = os.path.expanduser(path)
+    path = os.path.abspath(path)
+    try:
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        result_dict = {
+            "success": True,
+            "message": f"File written: {path}",
+            "file_size": os.path.getsize(path),
+        }
+        return json.dumps(result_dict, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+def _search_file_direct(pattern: str, path: str, max_results: int = 50) -> str:
+    """Search a file for a pattern using simple string matching."""
+    import os, re
+    path = os.path.expanduser(path)
+    path = os.path.abspath(path)
+    try:
+        if not os.path.exists(path):
+            return json.dumps({"success": False, "error": f"File not found: {path}"})
+        with open(path, 'r', encoding='utf-8', errors='replace') as f:
+            lines = f.readlines()
+        regex = re.compile(pattern)
+        matches = []
+        for i, line in enumerate(lines, 1):
+            if regex.search(line):
+                matches.append({"line": i, "content": line.rstrip()})
+                if len(matches) >= max_results:
+                    break
+        result_dict = {
+            "success": True,
+            "matches": matches,
+            "total_matches": len(matches),
+        }
+        return json.dumps(result_dict, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
+
+
+def _list_dir_direct(path: str) -> str:
+    """List directory contents directly."""
+    import os
+    path = os.path.expanduser(path)
+    path = os.path.abspath(path)
+    try:
+        if not os.path.exists(path):
+            return json.dumps({"success": False, "error": f"Diretório não encontrado: {path}"})
+        if not os.path.isdir(path):
+            return json.dumps({"success": False, "error": f"Não é um diretório: {path}"})
+        entries = os.listdir(path)
+        result_dict = {
+            "success": True,
+            "entries": entries,
+            "count": len(entries),
+        }
+        return json.dumps(result_dict, ensure_ascii=False)
+    except Exception as e:
+        return json.dumps({"success": False, "error": str(e)})
