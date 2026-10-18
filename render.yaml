@@ -2,7 +2,7 @@ services:
   - type: web
     name: bob-ai-x
     env: python
-    buildCommand: uv sync
+    buildCommand: poetry install
     startCommand: python run_agent.py
     envVars:
       - key: NODE_ENV

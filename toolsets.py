@@ -235,3 +235,10 @@ def remove_toolset(name: str) -> None:
         name: The name of the toolsets to remove.
     """
     DEFAULT_TOOLSETS.pop(name, None)
+
+# SessionsPlatforms: toolsets available in specific platform sessions
+TOOLSET_SESSION_PLATFORMS: set = {"telegram", "discord", "slack", "whatsapp", "telegram_menu"}
+
+def get_all_toolsets() -> set:
+    """Get the set of all available toolsets."""
+    return set(DEFAULT_TOOLSETS) | set(PLUGIN_BUNDLES) | set(CORE_TOOLSETS) | TOOLSET_SESSION_PLATFORMS
