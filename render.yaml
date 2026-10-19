@@ -2,32 +2,10 @@ services:
   - type: web
     name: bob-ai-x
     env: python
-    buildCommand: poetry install
-    startCommand: python run_agent.py
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
     envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: "3000"
-      - key: TELEGRAM_TOKEN
-        value: ${TELEGRAM_TOKEN}
-      - key: OPENROUTER_API_KEY
-        value: ${OPENROUTER_API_KEY}
-      - key: MASTER_ID
-        value: ${MASTER_ID}
-      - key: ADMIN_IDS
-        value: ${ADMIN_IDS}
-      - key: ACCESS_PASSWORD
-        value: ${ACCESS_PASSWORD}
-      - key: CRIADOR_CHAT_ID
-        value: ${CRIADOR_CHAT_ID}
-      - key: AI_BASE_URL
-        value: https://openrouter.ai/api/v1
-      - key: AI_API_KEY
-        value: ${AI_API_KEY}
-      - key: AI_MODEL
-        value: ${AI_MODEL}
-      - key: MAX_HISTORICO
-        value: "100"
-      - key: MAX_CHARS_ARQUIVO
-        value: "10000"
+      - key: TELEGRAM_BOT_TOKEN
+        value: ${TELEGRAM_BOT_TOKEN}
+      - key: GOOGLE_API_KEY
+        value: ${GOOGLE_API_KEY}

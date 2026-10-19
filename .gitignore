@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Secrets & tokens (nunca commitar)
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+id_ed255lo
+id_ed255lo.pub
+
+# JS / Node (se precisar do front)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Heroku
+heroku_logs
+
+# Render (evitar build caches no repo)
+.react-app/
+.coverage
+htmlcov/
