@@ -449,7 +449,6 @@ termux-all = [
   "hermes-agent[google]",
   "hermes-agent[sms]",
   "hermes-agent[web]",
-  "hermes-agent[pty]",
 ]
 dingtalk = [
   "dingtalk-stream==0.24.3",
@@ -507,21 +506,20 @@ all = [
   #   matrix, slack, honcho, voice (faster-whisper),
   #   dingtalk, feishu, bedrock, tts-premium (elevenlabs)
   #
-  # Why: the matrix extra in particular pulls `mautrix[encryption]`
-  # which depends on `python-olm`. python-olm has Linux-only wheels and
-  # no native build path on Windows or modern macOS. With matrix in
-  # [all], `uv sync --locked` on Windows tried to build it from sdist
-  # and failed on `make`. Lazy-install routes that build to first use,
-  # where the user is expected to have a toolchain available.
-  "hermes-agent[cron]",
-  "hermes-agent[pty]",
-  "hermes-agent[mcp]",
-  "hermes-agent[uvloop]",
-  "hermes-agent[sms]",
-  "hermes-agent[acp]",
-  "hermes-agent[google]",
-  "hermes-agent[web]",
-  "hermes-agent[youtube]",
+  # Policy (2026-05-12): `[all]` includes only extras that genuinely
+  # CAN'T be prepared on demand by PM — i.e. things every
+  # session can use, things needed before the agent loop is alive
+  # (terminal/CLI), and skill deps that dev environments need.
+  #
+  # Core extras that every session needs and that cannot be lazy-installed:
+  # ptyprocess + pywinpty are now in [dependencies] automatically.
+  # croniter, snowballstemmer are in [dependencies] already.
+  # uvloop is gated behind [uvloop] extra (Android/Termux omits it).
+  "croniter==6.0.0",
+  "snowballstemmer==3.1.1",
+  "ptyprocess>=0.7.0,<1",
+  "pywinpty>=3.0.5,<4",
+  "uvloop>=0.15.1,<0.24; sys_platform != 'win32' and sys_platform != 'cygwin' and sys_platform != 'android' and platform_python_implementation != 'PyPy'",
 ]
 
 [dependency-groups]
