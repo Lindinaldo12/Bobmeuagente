@@ -10,7 +10,7 @@ from telegram.error import BadRequest
 from playwright.async_api import async_playwright
 
 # Configure Gemini Client
-client = genai.Client()
+client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
 
 async def safe_reply(update: Update, text: str, parse_mode: str = 'Markdown'):
     """
