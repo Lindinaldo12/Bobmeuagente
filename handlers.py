@@ -1,16 +1,17 @@
 import os
 import subprocess
 import asyncio
-from google import genai
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.error import BadRequest
 
-# playwright will be used for screenshots
 from playwright.async_api import async_playwright
 
-# Configure Gemini Client
-client = genai.Client(api_key=os.environ.get("GOOGLE_API_KEY"))
+# Provedor de IA com fallback automático (Gemini -> OpenRouter)
+from ai_client import ai_client
+
+# Configuração do modelo (pode vir do .env)
+MODEL_NAME = os.environ.get("MODEL_NAME", "gemini-3-flash-preview")
 
 async def safe_reply(update: Update, text: str, parse_mode: str = 'Markdown'):
     """
@@ -52,7 +53,10 @@ async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     Advanced handler for JARVIS that supports integrated task execution.
     """
     user_input = update.message.text
-    
+    if user_input is None:
+        await safe_reply(update, "Mensagem sem texto recebida, Sir.")
+        return
+
     # Check for direct system status commands
     if any(phrase in user_input.lower() for phrase in ["healthcheck", "status", "system status"]):
         try:
@@ -89,12 +93,12 @@ async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         
         full_prompt = f"{system_prompt}\n\nUser: {user_input}\nJARVIS:"
         
-        response = client.models.generate_content(
-            model="gemini-3-flash-preview", 
-            contents=full_prompt
+        jarvis_reply = ai_client.generate(
+            model=MODEL_NAME,
+            system_prompt=system_prompt,
+            user_prompt=user_input,
         )
-        jarvis_reply = response.text
-        
+
         # Let the user know JARVIS is thinking/acting
         await safe_reply(update, jarvis_reply)
 
