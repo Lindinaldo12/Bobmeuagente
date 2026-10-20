@@ -4,10 +4,10 @@ const express = require('express');
 // Compatibilidade entre os nomes de variaveis usados no projeto
 process.env.TELEGRAM_TOKEN =
   process.env.TELEGRAM_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
-process.env.OPENROUTER_API_KEY =
-  process.env.OPENROUTER_API_KEY || process.env.AI_API_KEY;
 process.env.GOOGLE_API_KEY =
   process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+process.env.OPENROUTER_API_KEY =
+  process.env.OPENROUTER_API_KEY || process.env.AI_API_KEY;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
