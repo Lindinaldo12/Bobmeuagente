@@ -1,5 +1,6 @@
 import os
 import logging
+import re
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 
@@ -14,6 +15,25 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
+
+# Redact bot token from logs to prevent leakage
+class RedactTokenFilter(logging.Filter):
+    """Filter to redact sensitive tokens from log messages."""
+    def filter(self, record):
+        if hasattr(record, 'msg'):
+            record.msg = redact_token(record.msg)
+        return True
+
+def redact_token(text):
+    """Remove bot token pattern from log messages."""
+    if not text:
+        return text
+    import re
+    return re.sub(r'bot\d+:[A-Za-z0-9_-]+', 'bot[REDACTED]:[REDACTED]', str(text))
+
+# Apply filter to the root logger handlers
+for handler in logging.getLogger().handlers:
+    handler.addFilter(RedactTokenFilter())
 
 def main():
     BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
