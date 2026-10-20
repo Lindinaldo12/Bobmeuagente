@@ -1,0 +1,23 @@
+{
+  "name": "bob-ai-x",
+  "version": "2.0.0",
+  "description": "Assistente pessoal de IA no Telegram",
+  "main": "bot.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "node bot.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.20.0",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.2",
+    "node-telegram-bot-api": "^0.66.0",
+    "pdf-parse": "^1.1.4"
+  },
+  "author": "José Lindinaldo do Nascimento Luiz",
+  "license": "MIT"
+}
