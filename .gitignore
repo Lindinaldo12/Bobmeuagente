@@ -33,3 +33,12 @@ heroku_logs
 .react-app/
 .coverage
 htmlcov/
+node_modules/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+backup/
+*.backup
+*.backup-*
