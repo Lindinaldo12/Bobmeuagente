@@ -1,17 +1,34 @@
 services:
-  - type: worker
+  - type: web
     name: bob-ai-x
-    env: python
-    buildCommand: |
-      pip install -r requirements.txt
-      python -m playwright install chromium
-    startCommand: python main.py
+    runtime: node
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true
     envVars:
-      - key: TELEGRAM_BOT_TOKEN
-        value: ${TELEGRAM_BOT_TOKEN}
-      - key: GOOGLE_API_KEY
-        value: ${GOOGLE_API_KEY}
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "20.18.0"
+      - key: TELEGRAM_TOKEN
+        sync: false
       - key: OPENROUTER_API_KEY
-        value: ${OPENROUTER_API_KEY}
-      - key: MODEL_NAME
-        value: ${MODEL_NAME}
+        sync: false
+      - key: AI_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: qwen/qwen-2.5-7b-instruct
+      - key: MASTER_ID
+        sync: false
+      - key: ADMIN_IDS
+        value: '["SEU_ID_ADMIN"]'
+      - key: ACCESS_PASSWORD
+        sync: false
+      - key: MAX_HISTORICO
+        value: "100"
+      - key: MAX_CHARS_ARQUIVO
+        value: "10000"
