@@ -1,5 +1,5 @@
 services:
-  - type: web
+  - type: worker
     name: bob-ai-x
     env: python
     buildCommand: pip install -r requirements.txt
