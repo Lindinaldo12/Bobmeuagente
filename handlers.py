@@ -144,6 +144,49 @@ async def text_message_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(f"Apologies, Sir. My cognitive link encountered an error: {str(e)}")
 
 
+async def status_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handler for the /status command with the 'Jarvis' persona.
+    """
+    try:
+        mem_info = subprocess.check_output(['free', '-h']).decode('utf-8')
+        disk_info = subprocess.check_output(['df', '-h', '/']).decode('utf-8')
+        response = f"Systems are nominal, Sir.\n\n**Memory:**\n`{mem_info}`\n**Disk:**\n`{disk_info}`"
+        await safe_reply(update, response)
+    except Exception as e:
+        await update.message.reply_text(f"I encountered an issue checking system health: {str(e)}")
+
+
+async def about_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handler for the /about command with the 'Jarvis' persona.
+    """
+    about_message = (
+        "*Sobre Jarvis – Bob AI X*\n\n"
+        "• **Nome:** Bob AI X (Jarvis)\n"
+        "• **Tipo:** Bot de assistente de tarefas / terminal\n"
+        "• **IA:** Google Gemini (gemini-3-flash-preview)\n"
+        "• **Plataforma:** Telegram + Render\n\n"
+        "Comece com /start ou /help para ver os comandos."
+    )
+    await safe_reply(update, about_message)
+
+
+async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handler for the /help command with the 'Jarvis' persona.
+    """
+    help_message = (
+        "*Comandos disponíveis*\n\n"
+        "/start — Boas-vinda do Jarvis\n"
+        "/help — Esta mensagem\n"
+        "/status — Status do sistema (memória e disco)\n"
+        "/about — Sobre o Jarvis\n\n"
+        "Envie uma mensagem livre para Jarvis interpretar e executar tarefas."
+    )
+    await safe_reply(update, help_message)
+
+
 
 
 
