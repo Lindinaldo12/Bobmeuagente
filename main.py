@@ -7,7 +7,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 load_dotenv()
 
 # Import our custom handlers
-from handlers import start_handler, text_message_handler
+from handlers import start_handler, text_message_handler, help_handler, status_handler, about_handler
 
 # Set up logging to monitor warnings and errors easily
 logging.basicConfig(
