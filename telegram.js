@@ -2,11 +2,13 @@ const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const pdfParse = require('pdf-parse');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const db = require('./db');
 
 const TOKEN = process.env.TELEGRAM_TOKEN;
 const GOOGLE_KEY = process.env.GOOGLE_API_KEY;
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
 const MODEL = process.env.AI_MODEL || 'gemini-2.5-flash';
+const MODEL_OPENROUTER = process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
 const MAX_HISTORICO = parseInt(process.env.MAX_HISTORICO || '20', 10);
 
 if (!TOKEN) {
@@ -14,22 +16,10 @@ if (!TOKEN) {
   module.exports = {};
 } else {
   const bot = new TelegramBot(TOKEN, { polling: true });
-  const historicos = new Map();
 
   const SYSTEM_PROMPT =
     'Voce e o Bob, assistente pessoal direto e objetivo. ' +
     'Responda em portugues do Brasil, com respostas curtas.';
-
-  function getHistorico(chatId) {
-    if (!historicos.has(chatId)) historicos.set(chatId, []);
-    return historicos.get(chatId);
-  }
-
-  function pushHistorico(chatId, role, content) {
-    const h = getHistorico(chatId);
-    h.push({ role, content });
-    while (h.length > MAX_HISTORICO) h.shift();
-  }
 
   async function chamarGemini(historico, imagem) {
     const genAI = new GoogleGenerativeAI(GOOGLE_KEY);
@@ -59,7 +49,7 @@ if (!TOKEN) {
     const resp = await axios.post(
       `${base}/chat/completions`,
       {
-        model: MODEL,
+        model: MODEL_OPENROUTER,
         messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...historico],
       },
       {
@@ -89,11 +79,12 @@ if (!TOKEN) {
 
   async function responder(msg, texto, imagem) {
     const chatId = msg.chat.id;
-    pushHistorico(chatId, 'user', texto || '');
+    db.salvar(chatId, 'user', texto || '');
 
     try {
-      const resposta = await gerarResposta(getHistorico(chatId), imagem);
-      pushHistorico(chatId, 'assistant', resposta);
+      const historico = db.buscar(chatId, MAX_HISTORICO);
+      const resposta = await gerarResposta(historico, imagem);
+      db.salvar(chatId, 'assistant', resposta);
       await bot.sendMessage(chatId, resposta);
     } catch (err) {
       console.error('Erro ao responder:', err.message);
@@ -113,7 +104,7 @@ if (!TOKEN) {
   });
 
   bot.onText(/\/reset/, (msg) => {
-    historicos.delete(msg.chat.id);
+    db.limpar(msg.chat.id);
     bot.sendMessage(msg.chat.id, 'Historico limpo.');
   });
 
