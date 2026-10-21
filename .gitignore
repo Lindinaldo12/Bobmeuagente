@@ -6,4 +6,5 @@ node_modules/
 *.backup
 *.backup-*
 backup/
+bob-memoria.json
 .DS_Store
