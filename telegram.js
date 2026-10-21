@@ -7,8 +7,8 @@ const db = require('./db');
 const TOKEN = process.env.TELEGRAM_TOKEN;
 const GOOGLE_KEY = process.env.GOOGLE_API_KEY;
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
-const MODEL = process.env.AI_MODEL || 'gemini-2.5-flash';
-const MODEL_OPENROUTER = process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
+const MODEL = process.env.AI_MODEL || 'gemini-3.8-flash';
+const MODEL_OPENROUTER = process.env.OPENROUTER_MODEL || 'google/gemini-3.8-flash';
 const MAX_HISTORICO = parseInt(process.env.MAX_HISTORICO || '20', 10);
 
 if (!TOKEN) {
@@ -63,18 +63,32 @@ if (!TOKEN) {
   }
 
   async function gerarResposta(historico, imagem) {
+    const erros = [];
+
     if (GOOGLE_KEY) {
       try {
         return await chamarGemini(historico, imagem);
       } catch (err) {
-        console.error('Gemini falhou:', err.message);
-        if (!OPENROUTER_KEY) throw err;
+        const msg = err.message || String(err);
+        console.error('Gemini falhou:', msg);
+        erros.push(`Gemini: ${msg.slice(0, 200)}`);
       }
     }
+
     if (OPENROUTER_KEY) {
-      return await chamarOpenRouter(historico);
+      try {
+        return await chamarOpenRouter(historico);
+      } catch (err) {
+        const msg = err.message || String(err);
+        console.error('OpenRouter falhou:', msg);
+        erros.push(`OpenRouter: ${msg.slice(0, 200)}`);
+      }
     }
-    throw new Error('Nenhuma chave de IA configurada.');
+
+    if (!erros.length) {
+      throw new Error('Nenhuma chave de IA configurada.');
+    }
+    throw new Error(erros.join(' | '));
   }
 
   async function responder(msg, texto, imagem) {
@@ -88,7 +102,11 @@ if (!TOKEN) {
       await bot.sendMessage(chatId, resposta);
     } catch (err) {
       console.error('Erro ao responder:', err.message);
-      await bot.sendMessage(chatId, 'Deu erro aqui. Tenta de novo em instantes.');
+      await bot.sendMessage(
+        chatId,
+        'Nao consegui falar com a IA agora. Detalhe tecnico:\n' +
+          err.message.slice(0, 300)
+      );
     }
   }
 
@@ -106,6 +124,15 @@ if (!TOKEN) {
   bot.onText(/\/reset/, (msg) => {
     db.limpar(msg.chat.id);
     bot.sendMessage(msg.chat.id, 'Historico limpo.');
+  });
+
+  bot.onText(/\/status/, (msg) => {
+    const linhas = [
+      `Modelo: ${MODEL}`,
+      `Gemini: ${GOOGLE_KEY ? 'configurado' : 'ausente'}`,
+      `OpenRouter: ${OPENROUTER_KEY ? 'configurado' : 'ausente'}`,
+    ];
+    bot.sendMessage(msg.chat.id, linhas.join('\n'));
   });
 
   bot.on('photo', async (msg) => {
