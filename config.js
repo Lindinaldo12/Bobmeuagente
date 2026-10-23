@@ -23,7 +23,6 @@ function numero(nome, padrao) {
   return Number.isFinite(v) ? v : padrao;
 }
 
-// Ordem de tentativa. Se o primeiro cair, o bot usa o proximo sozinho.
 const MODELOS_CANDIDATOS = [
   'gemini-3.8-flash',
   'gemini-3.5-flash-lite',
@@ -54,8 +53,9 @@ const config = {
   maxHistorico: numero('MAX_HISTORICO', 20),
   maxCharsArquivo: numero('MAX_CHARS_ARQUIVO', 10000),
   rateLimit: numero('RATE_LIMIT_PER_MIN', 10),
-  dbPath: primeiro('DB_PATH') || './bob-memoria.json',
-  cronSchedule: primeiro('CRON_SCHEDULE') || '0 9 * * *',
+  supabaseUrl: primeiro('SUPABASE_URL'),
+  supabaseKey: primeiro('SUPABASE_KEY'),
+  cronSecret: primeiro('CRON_SECRET'),
   cronMessage: primeiro('CRON_MESSAGE') || '',
   cronTarget: primeiro('CRON_TARGET'),
   tz: primeiro('TZ') || 'America/Sao_Paulo',
@@ -65,5 +65,6 @@ process.env.TZ = config.tz;
 
 config.acessoLiberado = config.allowedIds.length === 0;
 config.temIA = Boolean(config.googleKey || config.fallbackKey);
+config.temBanco = Boolean(config.supabaseUrl && config.supabaseKey);
 
 module.exports = config;
