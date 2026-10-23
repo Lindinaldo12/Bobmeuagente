@@ -1,211 +1,162 @@
 const TelegramBot = require('node-telegram-bot-api');
-const dotenv = require('dotenv');
-const { exec } = require('child_process');
-const { promisify } = require('util');
+const axios = require('axios');
+const pdfParse = require('pdf-parse');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// Carregar variáveis de ambiente
-dotenv.config({ path: './bob/.env' });
+const TOKEN = process.env.TELEGRAM_TOKEN;
+const GOOGLE_KEY = process.env.GOOGLE_API_KEY;
+const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+const MODEL = process.env.AI_MODEL || 'gemini-2.5-flash';
+const MAX_HISTORICO = parseInt(process.env.MAX_HISTORICO || '20', 10);
 
-// Promisify exec
-const execAsync = promisify(exec);
+if (!TOKEN) {
+  console.error('TELEGRAM_TOKEN ausente. Bot nao iniciado.');
+  module.exports = {};
+} else {
+  const bot = new TelegramBot(TOKEN, { polling: true });
+  const historicos = new Map();
 
-// ============================================================
-// CONFIGURAÇÃO
-// ============================================================
+  const SYSTEM_PROMPT =
+    'Voce e o Bob, assistente pessoal direto e objetivo. ' +
+    'Responda em portugues do Brasil, com respostas curtas.';
 
-const CONFIG = {
-    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
-    HERMES_BOT_TOKEN: process.env.HERMES_BOT_TOKEN,
-    HERMES_CHAT_ID: process.env.HERMES_CHAT_ID,
-    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
-    HERMES_TIMEOUT: 120000,
-};
+  function getHistorico(chatId) {
+    if (!historicos.has(chatId)) historicos.set(chatId, []);
+    return historicos.get(chatId);
+  }
 
-// ============================================================
-// FUNÇÕES DE INTERNET
-// ============================================================
+  function pushHistorico(chatId, role, content) {
+    const h = getHistorico(chatId);
+    h.push({ role, content });
+    while (h.length > MAX_HISTORICO) h.shift();
+  }
 
-/**
- * Chamar o agente Hermes via terminal
- */
-async function chamarHermes(texto) {
-    return new Promise((resolve, reject) => {
-        const comando = `echo "${texto.replace(/"/g, '\\"')}" | hermes -p default send`;
-        const child = exec(commando, { timeout: CONFIG.HERMES_TIMEOUT }, (error, stdout, stderr) => {
-            if (error) {
-                reject(new Error(stderr || error.message));
-            } else {
-                resolve(stdout.trim());
-            }
-        });
-        setTimeout(() => {
-            child.kill();
-            reject(new Error('Timeout: Hermes não respondeu em 120 segundos'));
-        }, CONFIG.HERMES_TIMEOUT);
+  async function chamarGemini(historico, imagem) {
+    const genAI = new GoogleGenerativeAI(GOOGLE_KEY);
+    const model = genAI.getGenerativeModel({
+      model: MODEL,
+      systemInstruction: SYSTEM_PROMPT,
     });
-}
 
-/**
- * Enviar mensagem para o Hermês Bot (segundo bot)
- */
-async function chamarHermesBot(mensagem, chatId) {
-    if (!CONFIG.HERMES_BOT_TOKEN) {
-        console.warn('⚠️  HERMES_BOT_TOKEN não configurado');
-        return;
-    }
-    
-    try {
-        const url = `https://api.telegram.org/bot${CONFIG.HERMES_BOT_TOKEN}/sendMessage`;
-        
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: chatId,
-                text: mensagem
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.ok) {
-            console.log('✅ Mensagem enviada ao Hermês Bot');
-        } else {
-            console.error('❌ Erro do Hermês Bot:', data.description);
-        }
-    } catch (error) {
-        console.error('❌ Erro ao chamar Hermês Bot:', error.message);
-    }
-}
+    const contents = historico.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
 
-/**
- * Função OpenRouter para buscas online
- */
-async function chamarOpenRouter(mensagem, chatId) {
-    try {
-        if (!CONFIG.OPENROUTER_API_KEY) {
-            await bot.sendMessage(chatId, '❌ Configure OPENROUTER_API_KEY no .env');
-            return;
-        }
-        
-        const url = 'https://openrouter.ai/api/v1/chat/completions';
-        
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${CONFIG.OPENROUTER_API_KEY}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'http://localhost',
-                'X-Title': 'Bob AI X'
-            },
-            body: JSON.stringify({
-                model: "meta-llama/llama-3.1-8b-instruct:free",
-                messages: [
-                    { role: "system", content: "Você é Bob, um assistente de programação e segurança." },
-                    { role: "user", content: mensagem }
-                ]
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.ok) {
-            const resposta = data.choices[0]?.message?.content || 'Sem resposta.';
-            await bot.sendMessage(chatId, resposta);
-            console.log('✅ Resposta do OpenRouter enviada');
-        } else {
-          await bot.sendMessage(chatId, '❌ Erro: ' + data.error?.message);
-        }
-    } catch (error) {
-        console.error('❌ Erro OpenRouter:', error.message);
-        await bot.sendMessage(chatId, '❌ Erro de internet ou conexão.');
+    if (imagem) {
+      const ultima = contents[contents.length - 1];
+      ultima.parts.push({
+        inlineData: { data: imagem.data, mimeType: imagem.mimeType },
+      });
     }
-}
 
-/**
- * Lógica de tratamento do comando
- */
-async function processarComando(msg) {
+    const result = await model.generateContent({ contents });
+    return result.response.text();
+  }
+
+  async function chamarOpenRouter(historico) {
+    const base = process.env.AI_BASE_URL || 'https://openrouter.ai/api/v1';
+    const resp = await axios.post(
+      `${base}/chat/completions`,
+      {
+        model: MODEL,
+        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...historico],
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${OPENROUTER_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return resp.data.choices[0].message.content;
+  }
+
+  async function gerarResposta(historico, imagem) {
+    if (GOOGLE_KEY) {
+      try {
+        return await chamarGemini(historico, imagem);
+      } catch (err) {
+        console.error('Gemini falhou:', err.message);
+        if (!OPENROUTER_KEY) throw err;
+      }
+    }
+    if (OPENROUTER_KEY) {
+      return await chamarOpenRouter(historico);
+    }
+    throw new Error('Nenhuma chave de IA configurada.');
+  }
+
+  async function responder(msg, texto, imagem) {
     const chatId = msg.chat.id;
-    const texto = msg.text || msg.caption || '';
-    const usuario = msg.from?.first_name || 'Desconhecido';
-    
-    console.log(`📩 Mensagem de ${usuario}: ${texto}`);
-    
-    // Comandos básicos
-    if (texto === '/start') {
-        await bot.sendMessage(chatId, 
-            '👋 Olá! Sou o Bob AI X.\n' +
-            'Digite qualquer pergunta que eu responderei.\n' +
-            'Use /retry para pedir novamente.'
-        );
-        return;
-    }
-    
-    if (texto === '/help') {
-        await bot.sendMessage(chatId, 
-            '📚 Ajuda do Bob AI X:\n\n' +
-            '• Envie qualquer pergunta que eu responderei\n' +
-            '• /retry - Pedir para repensar a resposta\n' +
-            '• /status - Verificar status do sistema'
-        );
-        return;
-    }
-    
-    if (texto === '/status') {
-        const status = `
-📊 Status do Bob AI X:
+    pushHistorico(chatId, 'user', texto || '');
 
-🤖 Hermes: ${CONFIG.HERMES_BOT_TOKEN ? '✅ Ativo' : '❌ Inativo'}
-🌐 Internet: ${CONFIG.OPENROUTER_API_KEY ? '✅ Conectado' : '⚠️  Configurar'}
-🔗 Hermês Bot: ${CONFIG.HERMES_BOT_TOKEN ? '✅ Ativo' : '❌ Inativo'}
-🖥️  Sistema: Rodando normalmente
-        `.trim();
-        await bot.sendMessage(chatId, status);
-        return;
-    }
-    
-    // Tentativa 1: Hermes via terminal
     try {
-        const respostaHermes = await chamarHermes(texto);
-        await bot.sendMessage(chatId, respostaHermes);
-    } catch (error) {
-        console.error('❌ Erro Hermes:', error.message);
-        await bot.sendMessage(chatId, '❌ Erro ao chamar Hermes: ' + error.message);
+      const resposta = await gerarResposta(getHistorico(chatId), imagem);
+      pushHistorico(chatId, 'assistant', resposta);
+      await bot.sendMessage(chatId, resposta);
+    } catch (err) {
+      console.error('Erro ao responder:', err.message);
+      await bot.sendMessage(chatId, 'Deu erro aqui. Tenta de novo em instantes.');
     }
-    
-    // Tentativa 2: Hermês Bot (segundo bot)
-    if (CONFIG.HERMES_BOT_TOKEN) {
-        await chamarHermesBot(texto, chatId);
+  }
+
+  async function baixarArquivo(fileId) {
+    const file = await bot.getFile(fileId);
+    const url = `https://api.telegram.org/file/bot${TOKEN}/${file.file_path}`;
+    const resp = await axios.get(url, { responseType: 'arraybuffer' });
+    return Buffer.from(resp.data);
+  }
+
+  bot.onText(/\/start/, (msg) => {
+    bot.sendMessage(msg.chat.id, 'Oi. Sou o Bob. Manda texto, foto ou PDF.');
+  });
+
+  bot.onText(/\/reset/, (msg) => {
+    historicos.delete(msg.chat.id);
+    bot.sendMessage(msg.chat.id, 'Historico limpo.');
+  });
+
+  bot.on('photo', async (msg) => {
+    try {
+      const foto = msg.photo[msg.photo.length - 1];
+      const buffer = await baixarArquivo(foto.file_id);
+      await responder(msg, msg.caption || 'Descreva esta imagem.', {
+        data: buffer.toString('base64'),
+        mimeType: 'image/jpeg',
+      });
+    } catch (err) {
+      console.error('Erro na foto:', err.message);
+      bot.sendMessage(msg.chat.id, 'Nao consegui ler a imagem.');
     }
-    
-    // Tentativa 3: OpenRouter (fallback)
-    await chamarOpenRouter(texto, chatId);
+  });
+
+  bot.on('document', async (msg) => {
+    try {
+      const doc = msg.document;
+      if (doc.mime_type !== 'application/pdf') {
+        return bot.sendMessage(msg.chat.id, 'Por enquanto eu leio apenas PDF.');
+      }
+      const buffer = await baixarArquivo(doc.file_id);
+      const pdf = await pdfParse(buffer);
+      const texto = `Conteudo do PDF:\n\n${pdf.text.slice(0, 10000)}`;
+      await responder(msg, msg.caption ? `${msg.caption}\n\n${texto}` : texto);
+    } catch (err) {
+      console.error('Erro no PDF:', err.message);
+      bot.sendMessage(msg.chat.id, 'Nao consegui ler o PDF.');
+    }
+  });
+
+  bot.on('message', (msg) => {
+    if (msg.text && !msg.text.startsWith('/')) {
+      responder(msg, msg.text);
+    }
+  });
+
+  bot.on('polling_error', (err) => {
+    console.error('Polling error:', err.message);
+  });
+
+  console.log('Telegram conectado. Modelo:', MODEL);
+  module.exports = { bot };
 }
-
-// ============================================================
-// EVENTOS DO BOT
-// ============================================================
-
-bot.on('message', (msg) => {
-    if (msg.from?.is_bot) return;
-    processarComando(msg);
-});
-
-// Integramos foto/mídia
-bot.on('any', (msg) => {
-    if (msg.photo) {
-        const fileId = msg.photo[msg.photo.length - 1].file_id;
-        const chatId = msg.chat.id;
-        bot.sendMessage(chatId, '📸 Imagem recebida! Envie uma mensagem textual para análise.');
-    }
-});
-
-// ============================================================
-// INÍCIO
-// ============================================================
-
-console.log('🚀 Bob AI X iniciando...');
-console.log(`📡 Telegram: ${CONFIG.TELEGRAM_BOT_TOKEN ? '✅ Presente' : '❌ Ausente'}`);
-console.log(`🌐 Internet: ${CONFIG.OPENROUTER_API_KEY ? '✅ Conectado' : '⚠️  Pendente'}`);
-console.log(`🤖 Hermês Bot: ${CONFIG.HERMES_BOT_TOKEN ? '✅ Ativo' : '❌ Inativo'}`);
