@@ -1,47 +1,46 @@
-const fs = require('fs');
-const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
+const config = require('./config');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'bob-memoria.json');
+let supabase = null;
 
-let dados = {};
+if (config.temBanco) {
+  supabase = createClient(config.supabaseUrl, config.supabaseKey, {
+    auth: { persistSession: false },
+  });
+} else {
+  console.error('Supabase nao configurado. Memoria desativada.');
+}
 
-function carregar() {
-  try {
-    if (fs.existsSync(DB_PATH)) {
-      dados = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-    }
-  } catch (err) {
-    console.error('Falha ao ler memoria:', err.message);
-    dados = {};
+async function salvar(chatId, role, content) {
+  if (!supabase) return;
+  const { error } = await supabase
+    .from('historico')
+    .insert({ chat_id: String(chatId), role, content });
+  if (error) console.error('Supabase insert:', error.message);
+}
+
+async function buscar(chatId, limite) {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('historico')
+    .select('role, content')
+    .eq('chat_id', String(chatId))
+    .order('id', { ascending: false })
+    .limit(limite);
+  if (error) {
+    console.error('Supabase select:', error.message);
+    return [];
   }
+  return data.reverse();
 }
 
-function gravar() {
-  try {
-    fs.writeFileSync(DB_PATH, JSON.stringify(dados), 'utf8');
-  } catch (err) {
-    console.error('Falha ao gravar memoria:', err.message);
-  }
-}
-
-carregar();
-
-function salvar(chatId, role, content) {
-  const id = String(chatId);
-  if (!dados[id]) dados[id] = [];
-  dados[id].push({ role, content, em: Date.now() });
-  gravar();
-}
-
-function buscar(chatId, limite) {
-  const id = String(chatId);
-  const lista = dados[id] || [];
-  return lista.slice(-limite).map((m) => ({ role: m.role, content: m.content }));
-}
-
-function limpar(chatId) {
-  delete dados[String(chatId)];
-  gravar();
+async function limpar(chatId) {
+  if (!supabase) return;
+  const { error } = await supabase
+    .from('historico')
+    .delete()
+    .eq('chat_id', String(chatId));
+  if (error) console.error('Supabase delete:', error.message);
 }
 
 module.exports = { salvar, buscar, limpar };
