@@ -1,6 +1,6 @@
 {
   "name": "bob-ai-x",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Assistente pessoal de IA no Telegram",
   "main": "bot.js",
   "engines": {
@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.45.0",
     "axios": "^1.20.0",
     "dotenv": "^16.6.1",
     "express": "^4.22.2",
