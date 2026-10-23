@@ -130,12 +130,12 @@ if (!config.telegramToken) {
       return bot.sendMessage(chatId, 'Muitas mensagens seguidas. Aguarde um minuto.');
     }
 
-    await db.salvar(chatId, 'user', texto || '');
+    db.salvar(chatId, 'user', texto || '');
 
     try {
-      const historico = await db.buscar(chatId, config.maxHistorico);
+      const historico = db.buscar(chatId, config.maxHistorico);
       const resposta = await gerarResposta(historico, imagem);
-      await db.salvar(chatId, 'assistant', resposta);
+      db.salvar(chatId, 'assistant', resposta);
       await bot.sendMessage(chatId, resposta);
     } catch (err) {
       console.error('Erro ao responder:', err.message);
@@ -153,13 +153,6 @@ if (!config.telegramToken) {
     return Buffer.from(resp.data);
   }
 
-  async function enviarMensagemDiaria() {
-    if (!config.cronTarget) throw new Error('CRON_TARGET vazio');
-    if (!config.cronMessage) throw new Error('CRON_MESSAGE vazio');
-    await bot.sendMessage(config.cronTarget, config.cronMessage);
-    console.log('Mensagem diaria enviada para', config.cronTarget);
-  }
-
   bot.onText(/\/start/, (msg) => {
     bot.sendMessage(msg.chat.id, `Oi. Sou o ${config.botName}. Manda texto, foto ou PDF.`);
   });
@@ -168,8 +161,8 @@ if (!config.telegramToken) {
     bot.sendMessage(msg.chat.id, `Seu chat_id: ${msg.chat.id}`);
   });
 
-  bot.onText(/\/reset/, async (msg) => {
-    await db.limpar(msg.chat.id);
+  bot.onText(/\/reset/, (msg) => {
+    db.limpar(msg.chat.id);
     bot.sendMessage(msg.chat.id, 'Historico limpo.');
   });
 
@@ -178,7 +171,6 @@ if (!config.telegramToken) {
       `Modelos: ${config.modelos.join(' > ')}`,
       `Gemini: ${config.googleKey ? 'ok' : 'ausente'}`,
       `Fallback: ${config.fallbackKey ? 'ok' : 'ausente'}`,
-      `Supabase: ${config.temBanco ? 'ok' : 'ausente'}`,
       `Acesso: ${config.acessoLiberado ? 'aberto' : config.allowedIds.length + ' autorizados'}`,
       `Limite: ${config.rateLimit} msg/min`,
       `Fuso: ${config.tz}`,
@@ -227,5 +219,5 @@ if (!config.telegramToken) {
   });
 
   console.log('Telegram conectado. Modelos:', config.modelos.join(' > '));
-  module.exports = { bot, enviarMensagemDiaria };
+  module.exports = { bot };
 }
