@@ -6,11 +6,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 console.log('Bob AI X iniciado.');
-console.log('Bob v2.2.0 | Render');
+console.log('Bob v2.3.0 | Render');
 
 if (!config.telegramToken) console.error('TELEGRAM_TOKEN ausente.');
 if (!config.temIA) console.error('Nenhuma chave de IA configurada.');
-if (!config.temBanco) console.error('Supabase nao configurado.');
 
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err.stack || err.message);
