@@ -1,26 +1,75 @@
-const { createClient } = require('@supabase/supabase-js');
+const fs = require('fs');
+const path = require('path');
 const config = require('./config');
 
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'bob-memoria.json');
+
 let supabase = null;
+let usarJson = false;
+let dados = {};
 
 if (config.temBanco) {
-  supabase = createClient(config.supabaseUrl, config.supabaseKey, {
-    auth: { persistSession: false },
-  });
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    supabase = createClient(config.supabaseUrl, config.supabaseKey, {
+      auth: { persistSession: false },
+    });
+    console.log('Memoria: Supabase');
+  } catch (e) {
+    console.error('Supabase indisponivel, usando arquivo local:', e.message);
+    usarJson = true;
+  }
 } else {
-  console.error('Supabase nao configurado. Memoria desativada.');
+  usarJson = true;
+  console.log('Memoria: arquivo local (Supabase nao configurado)');
+}
+
+function carregarJson() {
+  try {
+    if (fs.existsSync(DB_PATH)) {
+      dados = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+    }
+  } catch (e) {
+    console.error('Falha ao ler memoria:', e.message);
+    dados = {};
+  }
+}
+
+function gravarJson() {
+  try {
+    fs.writeFileSync(DB_PATH, JSON.stringify(dados), 'utf8');
+  } catch (e) {
+    console.error('Falha ao gravar memoria:', e.message);
+  }
+}
+
+if (usarJson) carregarJson();
+
+function trocarParaJson(motivo) {
+  console.error('Supabase falhou, trocando para arquivo local:', motivo);
+  usarJson = true;
+  carregarJson();
 }
 
 async function salvar(chatId, role, content) {
-  if (!supabase) return;
+  if (usarJson) {
+    const id = String(chatId);
+    if (!dados[id]) dados[id] = [];
+    dados[id].push({ role, content, em: Date.now() });
+    gravarJson();
+    return;
+  }
   const { error } = await supabase
     .from('historico')
     .insert({ chat_id: String(chatId), role, content });
-  if (error) console.error('Supabase insert:', error.message);
+  if (error) trocarParaJson(error.message);
 }
 
 async function buscar(chatId, limite) {
-  if (!supabase) return [];
+  if (usarJson) {
+    const lista = dados[String(chatId)] || [];
+    return lista.slice(-limite).map((m) => ({ role: m.role, content: m.content }));
+  }
   const { data, error } = await supabase
     .from('historico')
     .select('role, content')
@@ -28,19 +77,29 @@ async function buscar(chatId, limite) {
     .order('id', { ascending: false })
     .limit(limite);
   if (error) {
-    console.error('Supabase select:', error.message);
-    return [];
+    trocarParaJson(error.message);
+    const lista = dados[String(chatId)] || [];
+    return lista.slice(-limite).map((m) => ({ role: m.role, content: m.content }));
   }
   return data.reverse();
 }
 
 async function limpar(chatId) {
-  if (!supabase) return;
+  if (usarJson) {
+    delete dados[String(chatId)];
+    gravarJson();
+    return;
+  }
   const { error } = await supabase
     .from('historico')
     .delete()
     .eq('chat_id', String(chatId));
-  if (error) console.error('Supabase delete:', error.message);
+  if (error) trocarParaJson(error.message);
 }
 
-module.exports = { salvar, buscar, limpar };
+module.exports = {
+  salvar,
+  buscar,
+  limpar,
+  modo: () => (usarJson ? 'arquivo local' : 'Supabase'),
+};
