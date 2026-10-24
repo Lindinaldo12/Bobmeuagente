@@ -1,6 +1,6 @@
 {
   "name": "bob-ai-x",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Assistente pessoal de IA no Telegram",
   "main": "bot.js",
   "engines": {
