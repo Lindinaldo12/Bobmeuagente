@@ -1,40 +1,42 @@
+require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const pdfParse = require('pdf-parse');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const config = require('./config');
-const db = require('./db');
 
-if (!config.telegramToken) {
-  console.error('Token do Telegram ausente. Bot nao iniciado.');
+const TOKEN = process.env.TELEGRAM_TOKEN;
+const GOOGLE_KEY = process.env.GOOGLE_API_KEY;
+const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+const MODEL = process.env.AI_MODEL || 'gemini-2.5-flash';
+const MAX_HISTORICO = parseInt(process.env.MAX_HISTORICO || '20', 10);
+
+if (!TOKEN) {
+  console.error('TELEGRAM_TOKEN ausente. Bot nao iniciado.');
   module.exports = {};
 } else {
-  const bot = new TelegramBot(config.telegramToken, { polling: true });
-  const uso = new Map();
+  const bot = new TelegramBot(TOKEN, { polling: true });
+  const historicos = new Map();
 
-  function autorizado(chatId) {
-    if (config.acessoLiberado) return true;
-    return config.allowedIds.includes(String(chatId));
+  const SYSTEM_PROMPT =
+    'Voce e o Bob, assistente pessoal direto e objetivo. ' +
+    'Responda em portugues do Brasil, com respostas curtas.';
+
+  function getHistorico(chatId) {
+    if (!historicos.has(chatId)) historicos.set(chatId, []);
+    return historicos.get(chatId);
   }
 
-  function dentroDoLimite(chatId) {
-    const id = String(chatId);
-    const agora = Date.now();
-    const marcas = (uso.get(id) || []).filter((t) => agora - t < 60000);
-    if (marcas.length >= config.rateLimit) {
-      uso.set(id, marcas);
-      return false;
-    }
-    marcas.push(agora);
-    uso.set(id, marcas);
-    return true;
+  function pushHistorico(chatId, role, content) {
+    const h = getHistorico(chatId);
+    h.push({ role, content });
+    while (h.length > MAX_HISTORICO) h.shift();
   }
 
-  async function tentarGemini(modelo, historico, imagem) {
-    const genAI = new GoogleGenerativeAI(config.googleKey);
+  async function chamarGemini(historico, imagem) {
+    const genAI = new GoogleGenerativeAI(GOOGLE_KEY);
     const model = genAI.getGenerativeModel({
-      model: modelo,
-      systemInstruction: config.persona,
+      model: MODEL,
+      systemInstruction: SYSTEM_PROMPT,
     });
 
     const contents = historico.map((m) => ({
@@ -43,139 +45,77 @@ if (!config.telegramToken) {
     }));
 
     if (imagem) {
-      contents[contents.length - 1].parts.push({
+      const ultima = contents[contents.length - 1];
+      ultima.parts.push({
         inlineData: { data: imagem.data, mimeType: imagem.mimeType },
       });
     }
 
-    const result = await model.generateContent({
-      contents,
-      generationConfig: {
-        temperature: config.temperatura,
-        maxOutputTokens: config.maxTokens,
-      },
-    });
+    const result = await model.generateContent({ contents });
     return result.response.text();
   }
 
-  async function chamarGemini(historico, imagem) {
-    const erros = [];
-    for (const modelo of config.modelos) {
-      try {
-        const texto = await tentarGemini(modelo, historico, imagem);
-        if (texto) {
-          if (modelo !== config.modelos[0]) console.log('Modelo em uso:', modelo);
-          return texto;
-        }
-      } catch (err) {
-        const msg = err.message || String(err);
-        console.error(`Gemini ${modelo} falhou:`, msg.slice(0, 160));
-        erros.push(`${modelo}: ${msg.slice(0, 120)}`);
-        const valeTentarOutro = /404|429|not found|no longer available|quota/i.test(msg);
-        if (!valeTentarOutro) break;
-      }
-    }
-    throw new Error(erros.join(' | ') || 'Gemini sem resposta');
-  }
-
-  async function chamarFallback(historico) {
+  async function chamarOpenRouter(historico) {
+    const base = process.env.AI_BASE_URL || 'https://openrouter.ai/api/v1';
     const resp = await axios.post(
-      `${config.fallbackUrl}/chat/completions`,
+      `${base}/chat/completions`,
       {
-        model: config.fallbackModel,
-        messages: [{ role: 'system', content: config.persona }, ...historico],
+        model: MODEL,
+        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...historico],
       },
       {
         headers: {
-          Authorization: `Bearer ${config.fallbackKey}`,
+          Authorization: *** ${OPENROUTER_KEY}`,
           'Content-Type': 'application/json',
         },
-        timeout: 30000,
       }
     );
     return resp.data.choices[0].message.content;
   }
 
   async function gerarResposta(historico, imagem) {
-    const erros = [];
-
-    if (config.googleKey) {
+    if (GOOGLE_KEY) {
       try {
         return await chamarGemini(historico, imagem);
       } catch (err) {
-        console.error('Gemini esgotado:', err.message.slice(0, 200));
-        erros.push(`Gemini: ${err.message.slice(0, 150)}`);
+        console.error('Gemini falhou:', err.message);
+        if (!OPENROUTER_KEY) throw err;
       }
     }
-
-    if (config.fallbackKey) {
-      try {
-        return await chamarFallback(historico);
-      } catch (err) {
-        console.error('Fallback falhou:', err.message.slice(0, 200));
-        erros.push(`Fallback: ${err.message.slice(0, 150)}`);
-      }
+    if (OPENROUTER_KEY) {
+      return await chamarOpenRouter(historico);
     }
-
-    throw new Error(erros.join(' | ') || 'Nenhuma chave de IA configurada.');
+    throw new Error('Nenhuma chave de IA configurada.');
   }
 
   async function responder(msg, texto, imagem) {
     const chatId = msg.chat.id;
-
-    if (!autorizado(chatId)) {
-      return bot.sendMessage(chatId, 'Acesso nao autorizado.');
-    }
-    if (!dentroDoLimite(chatId)) {
-      return bot.sendMessage(chatId, 'Muitas mensagens seguidas. Aguarde um minuto.');
-    }
-
-    db.salvar(chatId, 'user', texto || '');
+    pushHistorico(chatId, 'user', texto || '');
 
     try {
-      const historico = db.buscar(chatId, config.maxHistorico);
-      const resposta = await gerarResposta(historico, imagem);
-      db.salvar(chatId, 'assistant', resposta);
+      const resposta = await gerarResposta(getHistorico(chatId), imagem);
+      pushHistorico(chatId, 'assistant', resposta);
       await bot.sendMessage(chatId, resposta);
     } catch (err) {
       console.error('Erro ao responder:', err.message);
-      await bot.sendMessage(
-        chatId,
-        'Nao consegui falar com a IA agora.\nDetalhe: ' + err.message.slice(0, 250)
-      );
+      await bot.sendMessage(chatId, 'Deu erro aqui. Tenta de novo em instantes.');
     }
   }
 
   async function baixarArquivo(fileId) {
     const file = await bot.getFile(fileId);
-    const url = `https://api.telegram.org/file/bot${config.telegramToken}/${file.file_path}`;
+    const url = `https://api.telegram.org/file/bot${TOKEN}/${file.file_path}`;
     const resp = await axios.get(url, { responseType: 'arraybuffer' });
     return Buffer.from(resp.data);
   }
 
   bot.onText(/\/start/, (msg) => {
-    bot.sendMessage(msg.chat.id, `Oi. Sou o ${config.botName}. Manda texto, foto ou PDF.`);
-  });
-
-  bot.onText(/\/id/, (msg) => {
-    bot.sendMessage(msg.chat.id, `Seu chat_id: ${msg.chat.id}`);
+    bot.sendMessage(msg.chat.id, 'Oi. Sou o Bob. Manda texto, foto ou PDF.');
   });
 
   bot.onText(/\/reset/, (msg) => {
-    db.limpar(msg.chat.id);
+    historicos.delete(msg.chat.id);
     bot.sendMessage(msg.chat.id, 'Historico limpo.');
-  });
-
-  bot.onText(/\/status/, (msg) => {
-    const linhas = [
-      `Modelos: ${config.modelos.join(' > ')}`,
-      `Gemini: ${config.googleKey ? 'ok' : 'ausente'}`,
-      `Fallback: ${config.fallbackKey ? 'ok' : 'ausente'}`,
-      `Acesso: ${config.acessoLiberado ? 'aberto' : config.allowedIds.length + ' autorizados'}`,
-      `Limite: ${config.rateLimit} msg/min`,
-      `Fuso: ${config.tz}`,
-    ];
-    bot.sendMessage(msg.chat.id, linhas.join('\n'));
   });
 
   bot.on('photo', async (msg) => {
@@ -200,7 +140,7 @@ if (!config.telegramToken) {
       }
       const buffer = await baixarArquivo(doc.file_id);
       const pdf = await pdfParse(buffer);
-      const texto = `Conteudo do PDF:\n\n${pdf.text.slice(0, config.maxCharsArquivo)}`;
+      const texto = `Conteudo do PDF:\n\n${pdf.text.slice(0, 10000)}`;
       await responder(msg, msg.caption ? `${msg.caption}\n\n${texto}` : texto);
     } catch (err) {
       console.error('Erro no PDF:', err.message);
@@ -218,6 +158,6 @@ if (!config.telegramToken) {
     console.error('Polling error:', err.message);
   });
 
-  console.log('Telegram conectado. Modelos:', config.modelos.join(' > '));
+  console.log('Telegram conectado. Modelo:', MODEL);
   module.exports = { bot };
 }
